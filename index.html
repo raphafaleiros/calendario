@@ -46,12 +46,12 @@
     }
   </style>
 
-  <!-- Importmap exato exigido pelo MindAR 1.2.5 (usando unpkg para todos os caminhos baterem) -->
+  <!-- Todos os links apontando exclusivamente para o servidor rápido jsDelivr (sem unpkg) -->
   <script type="importmap">
     {
       "imports": {
-        "three": "https://unpkg.com",
-        "three/addons/": "https://unpkg.com",
+        "three": "https://jsdelivr.net",
+        "three/addons/": "https://jsdelivr.net",
         "mindar-image-three": "https://jsdelivr.net"
       }
     }
@@ -59,7 +59,7 @@
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 4.1</div>
+  <div id="etiqueta-versao">Versão 4.2</div>
 
   <div id="tela-inicio">
     <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
@@ -71,16 +71,6 @@
   <div id="aviso-topo">🎄 Aponte a câmera para o Calendário!</div>
   <button id="botao-som">🔊 Ativar Música</button>
   <div id="container-ar"></div>
-
-  <!-- Captura se o celular falhar ao baixar o módulo da internet -->
-  <script>
-    setTimeout(() => {
-      const btn = document.getElementById('btn-iniciar');
-      if (btn && btn.disabled) {
-        document.getElementById('log-erro').innerText = "⚠️ A internet demorou a baixar o motor 3D. Verifique sua conexão e recarregue a página.";
-      }
-    }, 8000);
-  </script>
 
   <script type="module">
     import * as THREE from 'three';
