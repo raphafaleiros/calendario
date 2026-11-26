@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calendário de Natal RA</title>
 
-  <!-- Motores compatíveis e travados em versões estáveis -->
   <script src="https://aframe.io"></script>
   <script src="https://jsdelivr.net"></script>
   <script src="https://jsdelivr.net"></script>
@@ -13,99 +12,83 @@
   <style>
     html, body {
       margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: sans-serif;
     }
-
     #status-topo {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.75); color: #ffffff; padding: 10px 18px;
-      border-radius: 20px; font-size: 13px; font-weight: bold;
-      z-index: 99999; pointer-events: none; text-align: center;
-      width: 85%; max-width: 320px;
+      background: rgba(0, 0, 0, 0.85); color: #ffffff; padding: 12px 18px;
+      border-radius: 15px; font-size: 13px; font-weight: bold;
+      z-index: 99999; text-align: center; width: 85%; max-width: 340px;
     }
-
     #botao-som {
       position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
-      background: rgba(179, 0, 0, 0.9); color: #ffffff; border: 2px solid #d4af37;
+      background: #b30000; color: #ffffff; border: 2px solid #d4af37;
       padding: 12px 24px; border-radius: 25px; font-size: 15px; font-weight: bold;
-      cursor: pointer; z-index: 99999; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      -webkit-tap-highlight-color: transparent;
+      cursor: pointer; z-index: 99999;
     }
   </style>
 </head>
 <body>
 
-  <!-- Aviso discreto no topo -->
-  <div id="status-topo">⏳ Abrindo câmera...</div>
-
-  <!-- Botão discreto para liberar a música no celular -->
+  <div id="status-topo">⏳ Verificando arquivos...</div>
   <button id="botao-som" onclick="ativarSom()">🔊 Ativar Música</button>
 
-  <!-- Câmera liga automaticamente ao abrir o link (autoStart: true) -->
-  <a-scene 
-    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" 
-    color-space="sRGB" 
-    renderer="colorManagement: true" 
-    vr-mode-ui="enabled: false" 
-    device-orientation-permission-ui="enabled: false">
-    
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-    <!-- ALVO 0: Calendário Cheio -->
-    
-      <a-gltf-model id="modelo-cheio" animation-mixer rotation="90 0 0" position="0 0 0"></a-gltf-model>
-    
-
-    <!-- ALVO 1: Calendário Vazio -->
-    
-      <a-gltf-model id="modelo-vazio" animation-mixer rotation="90 0 0" position="0 0 0"></a-gltf-model>
-    
-
-  </a-scene>
-
   <script>
-    // 1. Identifica o dia pelo link do QR Code (ex: ?dia=3). Padrão: Dia 1.
     const parametros = new URLSearchParams(window.location.search);
     const diaAtual = parametros.get('dia') || '1';
+    const arquivoGlb = (diaAtual === '1') ? './animated_snowglobe.glb' : `./${diaAtual}.glb`;
+    const escala = (diaAtual === '1') ? '0.008 0.008 0.008' : '0.4 0.4 0.4';
 
-    // 2. Define o arquivo 3D e o tamanho ideal
-    let arquivoGlb = `./${diaAtual}.glb`;
-    let escala = "0.4 0.4 0.4";
-
-    if (diaAtual === '1') {
-      arquivoGlb = './animated_snowglobe.glb';
-      escala = "0.008 0.008 0.008";
-    }
-
-    const modCheio = document.getElementById('modelo-cheio');
-    const modVazio = document.getElementById('modelo-vazio');
-
-    modCheio.setAttribute('src', arquivoGlb);
-    modCheio.setAttribute('scale', escala);
-
-    modVazio.setAttribute('src', arquivoGlb);
-    modVazio.setAttribute('scale', escala);
-
-    // 3. Feedback visual de carregamento
-    const cena = document.querySelector('a-scene');
-    const statusTopo = document.getElementById('status-topo');
-
-    cena.addEventListener("arReady", () => {
-      statusTopo.innerText = `🎄 Dia ${diaAtual}: Aponte para o Calendário!`;
+    // Testa antes se o targets.mind existe no repositório para não travar a tela branca
+    fetch('./targets.mind').then(res => {
+      if (!res.ok) {
+        document.getElementById('status-topo').innerText = "❌ Erro: Arquivo targets.mind não encontrado no GitHub!";
+      } else {
+        document.getElementById('status-topo').innerText = "⏳ Pedindo permissão da câmera...";
+      }
+    }).catch(() => {
+      document.getElementById('status-topo').innerText = "❌ Erro de rede ao buscar targets.mind.";
     });
 
-    cena.addEventListener("arError", () => {
-      statusTopo.innerText = "❌ Erro na câmera. Verifique as permissões do navegador.";
-    });
+    document.write(`
+      <a-scene 
+        mindar-image="imageTargetSrc: ./targets.mind;" 
+        color-space="sRGB" 
+        renderer="colorManagement: true" 
+        vr-mode-ui="enabled: false" 
+        device-orientation-permission-ui="enabled: false">
+        
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    // 4. Controle de áudio do dia
+        
+          <a-gltf-model src="${arquivoGlb}" animation-mixer rotation="90 0 0" position="0 0 0" scale="${escala}"></a-gltf-model>
+        
+
+        
+          <a-gltf-model src="${arquivoGlb}" animation-mixer rotation="90 0 0" position="0 0 0" scale="${escala}"></a-gltf-model>
+        
+      </a-scene>
+    `);
+
     const musicaNatal = new Audio(`./musicanatal${diaAtual}.mp3`);
-    
     function ativarSom() {
       musicaNatal.loop = true;
       musicaNatal.play().catch(() => {});
       document.getElementById('botao-som').style.display = 'none';
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const cena = document.querySelector('a-scene');
+      const statusTopo = document.getElementById('status-topo');
+
+      cena.addEventListener("arReady", () => {
+        statusTopo.innerText = `🎄 Dia ${diaAtual}: Aponte para o Calendário!`;
+      });
+
+      cena.addEventListener("arError", () => {
+        statusTopo.innerText = "❌ Câmera bloqueada! Libere a câmera nas configurações do Chrome.";
+      });
+    });
   </script>
 
 </body>
