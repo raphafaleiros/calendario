@@ -1,82 +1,88 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Calendário de Natal RA</title>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calendário de Natal RA</title>
 
-  <script src="./aframe.min.js"></script>
-  <script src="./mindar-image-aframe.prod.js"></script>
+    <!-- Exatamente os mesmos scripts oficiais que funcionaram no seu celular -->
+    <script src="https://aframe.io"></script>
+    <script src="https://jsdelivr.net"></script>
 
-  <style>
-    html, body {
-      margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
-      font-family: sans-serif;
-    }
-    #aviso-topo {
-      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.85); color: #fff; padding: 10px 18px;
-      border-radius: 20px; font-size: 13px; font-weight: bold;
-      z-index: 99998; text-align: center; width: 85%; max-width: 320px;
-    }
-    #etiqueta-versao {
-      position: fixed; bottom: 10px; right: 12px;
-      background: rgba(0, 0, 0, 0.6); color: #d4af37;
-      padding: 4px 10px; border-radius: 8px; font-size: 11px;
-      z-index: 999999; pointer-events: none;
-    }
-  </style>
-
-  <script>
-    AFRAME.registerComponent('controlador-calendario', {
-      init: function () {
-        const aviso = document.getElementById('aviso-topo');
-        this.el.addEventListener("arReady", () => {
-          aviso.innerText = "🎄 Câmera pronta! Aponte para o cartão azul!";
-        });
-        this.el.addEventListener("arError", () => {
-          aviso.innerText = "❌ Erro ao iniciar o rastreamento.";
-        });
+    <style>
+      #botao-som {
+        position: fixed;
+        bottom: 25px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #b30000;
+        color: #ffffff;
+        border: 2px solid #d4af37;
+        padding: 12px 24px;
+        border-radius: 25px;
+        font-family: sans-serif;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 99999;
       }
-    });
-
-    AFRAME.registerComponent('detector-alvo', {
-      init: function () {
-        const aviso = document.getElementById('aviso-topo');
-        this.el.addEventListener("targetFound", () => {
-          aviso.innerText = "✅ RECONHECIDO!";
-        });
-        this.el.addEventListener("targetLost", () => {
-          aviso.innerText = "🎄 Aponte a câmera para o cartão azul!";
-        });
+      #etiqueta-versao {
+        position: fixed;
+        bottom: 10px;
+        right: 12px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #d4af37;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-family: sans-serif;
+        font-size: 11px;
+        z-index: 99999;
+        pointer-events: none;
       }
-    });
-  </script>
-</head>
-<body>
+    </style>
+  </head>
 
-  <div id="etiqueta-versao">Versão 16.1</div>
-  <div id="aviso-topo">⏳ Ligando câmera...</div>
+  <body>
+    <div id="etiqueta-versao">Versão 17.0</div>
+    <button id="botao-som" onclick="tocarMusica()">🔊 Ativar Música</button>
 
-  <!-- Apontando via jsDelivr (sem bloqueio) para o card.mind oficial desse cartão azul -->
-  <a-scene 
-    controlador-calendario
-    mindar-image="imageTargetSrc: https://jsdelivr.net; autoStart: true; uiScanning: yes; uiLoading: no;" 
-    color-space="sRGB" 
-    renderer="colorManagement: true" 
-    vr-mode-ui="enabled: false" 
-    device-orientation-permission-ui="enabled: false">
-    
-    <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
-    <a-light type="directional" color="#ffffff" intensity="1.5" position="1 2 3"></a-light>
+    <!-- Estrutura idêntica ao basic.html oficial, apontando para o seu ./targets.mind -->
+    <a-scene
+      mindar-image="imageTargetSrc: ./targets.mind;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      
+        <a-gltf-model
+          id="modelo-natal"
+          rotation="90 0 0"
+          position="0 0 0"
+          scale="0.5 0.5 0.5"
+        ></a-gltf-model>
+      
+    </a-scene>
 
-    
-      <a-box position="0 0 0.1" scale="0.3 0.3 0.3" color="#ff0000"></a-box>
-      <a-gltf-model src="./3.glb" rotation="90 0 0" position="0 0 0" scale="0.8 0.8 0.8"></a-gltf-model>
-    
-  </a-scene>
+    <script>
+      const parametros = new URLSearchParams(window.location.search);
+      const dia = parametros.get('dia') || '3';
 
-</body>
+      const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
+      const escala = (dia === '1') ? '0.015 0.015 0.015' : '0.5 0.5 0.5';
+
+      const modelo = document.getElementById('modelo-natal');
+      modelo.setAttribute('src', arquivoGlb);
+      modelo.setAttribute('scale', escala);
+
+      const musica = new Audio(`./musicanatal${dia}.mp3`);
+      function tocarMusica() {
+        musica.loop = true;
+        musica.play().catch(() => {});
+        document.getElementById('botao-som').style.display = 'none';
+      }
+    </script>
+  </body>
 </html>
