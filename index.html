@@ -18,137 +18,149 @@
   <style>
     html, body {
       margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
-      font-family: sans-serif; background-color: #1a1a1a; color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #121212; color: #ffffff;
     }
-    #container-ar {
+    #container {
       width: 100vw; height: 100vh; position: relative; overflow: hidden;
     }
-    #tela-inicio {
+    #painel-inicial {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: #1a1a1a; z-index: 99999; text-align: center; padding: 20px; box-sizing: border-box;
+      background: rgba(18, 18, 18, 0.95); z-index: 1000; text-align: center; padding: 20px; box-sizing: border-box;
     }
-    #btn-iniciar {
-      background: #2e7d32; color: white; border: 3px solid #d4af37;
+    #startButton {
+      background: #2e7d32; color: #ffffff; border: 3px solid #d4af37;
       padding: 16px 32px; border-radius: 30px; font-size: 18px; font-weight: bold;
       cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
-    #status {
+    #startButton:disabled {
+      background: #555555; border-color: #888888; cursor: not-allowed;
+    }
+    #aviso-status {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8); color: #fff; padding: 10px 18px;
+      background: rgba(0, 0, 0, 0.8); color: #ffffff; padding: 10px 18px;
       border-radius: 20px; font-size: 13px; font-weight: bold;
-      z-index: 999999; text-align: center; width: 85%; max-width: 320px;
+      z-index: 999; text-align: center; width: 85%; max-width: 320px; display: none;
     }
     #botao-som {
       position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
-      background: #b30000; color: #fff; border: 2px solid #d4af37;
+      background: #b30000; color: #ffffff; border: 2px solid #d4af37;
       padding: 12px 24px; border-radius: 25px; font-size: 15px; font-weight: bold;
-      cursor: pointer; z-index: 999999; display: none;
+      cursor: pointer; z-index: 999; display: none;
     }
   </style>
 </head>
 <body>
 
-  <div id="status">Pronto para iniciar</div>
+  <div id="aviso-status">🎄 Aponte a câmera para o Calendário!</div>
 
-  <div id="tela-inicio">
-    <h2 style="color: #d4af37; margin-bottom: 20px;">🎄 Calendário de Natal RA</h2>
-    <button id="btn-iniciar">📷 Abrir Câmera</button>
-    <p id="log-erro" style="color: #ff6b6b; font-size: 12px; margin-top: 20px;"></p>
+  <div id="painel-inicial">
+    <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
+    <p id="subtitulo-dia" style="margin-bottom: 25px; color: #cccccc;">Carregando configuração...</p>
+    <button id="startButton">📷 Abrir Câmera</button>
+    <p id="mensagem-erro" style="color: #ff6b6b; font-size: 13px; margin-top: 20px; max-width: 300px;"></p>
   </div>
 
   <button id="botao-som">🔊 Ativar Música</button>
-  <div id="container-ar"></div>
-
-  <!-- Captura qualquer erro antes mesmo do módulo carregar -->
-  <script>
-    window.onerror = function(msg) {
-      document.getElementById('log-erro').innerText = "Erro de script: " + msg;
-    };
-  </script>
+  <div id="container"></div>
 
   <script type="module">
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { MindARThree } from 'mindar-image-three';
 
-    const status = document.getElementById('status');
-    const logErro = document.getElementById('log-erro');
-    const telaInicio = document.getElementById('tela-inicio');
-    const btnIniciar = document.getElementById('btn-iniciar');
-    const btnSom = document.getElementById('botao-som');
-
-    const dia = new URLSearchParams(window.location.search).get('dia') || '3';
+    const parametros = new URLSearchParams(window.location.search);
+    const dia = parametros.get('dia') || '3';
     const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
     const escala = (dia === '1') ? 0.008 : 0.4;
 
+    document.getElementById('subtitulo-dia').innerText = `Surpresa do Dia ${dia}`;
+
+    const startButton = document.getElementById('startButton');
+    const painelInicial = document.getElementById('painel-inicial');
+    const avisoStatus = document.getElementById('aviso-status');
+    const mensagemErro = document.getElementById('mensagem-erro');
+    const botaoSom = document.getElementById('botao-som');
+
     const musica = new Audio(`./musicanatal${dia}.mp3`);
-    btnSom.onclick = () => {
+    botaoSom.addEventListener('click', () => {
       musica.loop = true;
       musica.play().catch(() => {});
-      btnSom.style.display = 'none';
-    };
+      botaoSom.style.display = 'none';
+    });
 
-    btnIniciar.onclick = async () => {
-      btnIniciar.innerText = "⏳ Abrindo...";
-      btnIniciar.disabled = true;
+    let mindarThree = null;
+
+    const start = async () => {
+      startButton.disabled = true;
+      startButton.innerText = "⏳ Iniciando câmera...";
+      mensagemErro.innerText = "";
 
       try {
-        const mindarThree = new MindARThree({
-          container: document.querySelector("#container-ar"),
+        mindarThree = new MindARThree({
+          container: document.querySelector("#container"),
           imageTargetSrc: "./targets.mind"
         });
 
         const { renderer, scene, camera } = mindarThree;
 
-        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-        const luz = new THREE.DirectionalLight(0xffffff, 2);
-        luz.position.set(1, 2, 3);
-        scene.add(luz);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        dirLight.position.set(1, 2, 3);
+        scene.add(dirLight);
 
-        const ancora0 = mindarThree.addAnchor(0);
-        const ancora1 = mindarThree.addAnchor(1);
+        const anchor0 = mindarThree.addAnchor(0);
+        const anchor1 = mindarThree.addAnchor(1);
+
+        const loader = new GLTFLoader();
+        let mixer = null;
+
+        loader.load(
+          arquivoGlb,
+          (gltf) => {
+            const model0 = gltf.scene;
+            model0.scale.set(escala, escala, escala);
+            model0.rotation.x = Math.PI / 2;
+            anchor0.group.add(model0);
+
+            const model1 = model0.clone();
+            anchor1.group.add(model1);
+
+            if (gltf.animations && gltf.animations.length > 0) {
+              mixer = new THREE.AnimationMixer(model0);
+              mixer.clipAction(gltf.animations[0]).play();
+            }
+          },
+          undefined,
+          () => {
+            avisoStatus.innerText = `⚠️ Modelo ${arquivoGlb} não encontrado.`;
+          }
+        );
 
         await mindarThree.start();
 
-        // Esconde a tela preta e mostra a câmera
-        telaInicio.style.display = 'none';
-        btnSom.style.display = 'block';
-        status.innerText = `🎄 Dia ${dia}: Aponte para o Calendário!`;
-
-        const loader = new GLTFLoader();
-        let mixer0 = null;
-
-        loader.load(arquivoGlb, (gltf) => {
-          const modelo0 = gltf.scene;
-          modelo0.scale.set(escala, escala, escala);
-          modelo0.rotation.x = Math.PI / 2;
-          ancora0.group.add(modelo0);
-
-          const modelo1 = modelo0.clone();
-          ancora1.group.add(modelo1);
-
-          if (gltf.animations && gltf.animations.length > 0) {
-            mixer0 = new THREE.AnimationMixer(modelo0);
-            mixer0.clipAction(gltf.animations[0]).play();
-          }
-        }, undefined, (err) => {
-          status.innerText = "❌ Erro ao baixar modelo 3D: " + arquivoGlb;
-        });
+        painelInicial.style.display = 'none';
+        avisoStatus.style.display = 'block';
+        avisoStatus.innerText = `🎄 Dia ${dia}: Aponte para o Calendário!`;
+        botaoSom.style.display = 'block';
 
         const clock = new THREE.Clock();
         renderer.setAnimationLoop(() => {
           const delta = clock.getDelta();
-          if (mixer0) mixer0.update(delta);
+          if (mixer) mixer.update(delta);
           renderer.render(scene, camera);
         });
 
-      } catch (erro) {
-        btnIniciar.innerText = "📷 Tentar Novamente";
-        btnIniciar.disabled = false;
-        logErro.innerText = "Falha: " + (erro.message || erro);
+      } catch (err) {
+        startButton.disabled = false;
+        startButton.innerText = "📷 Tentar Novamente";
+        mensagemErro.innerText = `Erro: ${err.message || err}. Abra este link diretamente no Google Chrome ou Safari.`;
       }
     };
+
+    startButton.addEventListener('click', start);
   </script>
 
 </body>
