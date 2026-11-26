@@ -5,24 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calendário de Natal RA</title>
 
-  <!-- Motores oficiais compatíveis -->
-  <script src="https://aframe.io"></script>
-  <script src="https://jsdelivr.net"></script>
-
   <style>
     html, body {
       margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
-      font-family: sans-serif;
+      font-family: sans-serif; background: #121212; color: #fff;
+    }
+    #container-ar {
+      width: 100vw; height: 100vh; position: relative; overflow: hidden;
     }
     #tela-inicio {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: #121212; color: #fff; z-index: 99999; text-align: center; padding: 20px; box-sizing: border-box;
+      background: #121212; z-index: 99999; text-align: center; padding: 20px; box-sizing: border-box;
     }
     #btn-iniciar {
       background: #2e7d32; color: #fff; border: 3px solid #d4af37;
       padding: 16px 32px; border-radius: 30px; font-size: 18px; font-weight: bold;
       cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    #btn-iniciar:disabled {
+      background: #444; border-color: #777; color: #aaa;
     }
     #aviso-topo {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
@@ -36,7 +38,6 @@
       padding: 12px 24px; border-radius: 25px; font-size: 15px; font-weight: bold;
       cursor: pointer; z-index: 99998; display: none;
     }
-    /* ETIQUETA DE VERSÃO (Removeremos depois que estiver tudo 100%) */
     #etiqueta-versao {
       position: fixed; bottom: 10px; right: 12px;
       background: rgba(255, 255, 255, 0.15); color: #d4af37;
@@ -44,97 +45,121 @@
       z-index: 999999; pointer-events: none;
     }
   </style>
+
+  <!-- Importmap apontando para servidores rápidos e estáveis -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cloudflare.com",
+        "three/addons/": "https://jsdelivr.net",
+        "mindar-image-three": "https://jsdelivr.net"
+      }
+    }
+  </script>
 </head>
 <body>
 
-  <!-- Etiqueta visível para confirmar que o navegador carregou a versão nova -->
-  <div id="etiqueta-versao">Versão 3.0</div>
+  <div id="etiqueta-versao">Versão 4.0</div>
 
-  <!-- Tela inicial com botão para liberar a câmera no clique -->
   <div id="tela-inicio">
     <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
-    <p id="subtitulo-dia" style="color: #ccc; margin-bottom: 25px;">Preparando surpresa...</p>
-    <button id="btn-iniciar" onclick="ligarAR()">📷 Iniciar Câmera RA</button>
-    <p id="log-erro" style="color: #ff6b6b; font-size: 13px; margin-top: 20px;"></p>
+    <p id="subtitulo-dia" style="color: #ccc; margin-bottom: 25px;">Carregando motor...</p>
+    <button id="btn-iniciar" disabled>⏳ Preparando...</button>
+    <p id="log-erro" style="color: #ff6b6b; font-size: 13px; margin-top: 20px; max-width: 320px;"></p>
   </div>
 
   <div id="aviso-topo">🎄 Aponte a câmera para o Calendário!</div>
-  <button id="botao-som" onclick="tocarMusica()">🔊 Ativar Música</button>
+  <button id="botao-som">🔊 Ativar Música</button>
+  <div id="container-ar"></div>
 
-  <!-- Cena de Realidade Aumentada -->
-  <a-scene 
-    id="cena-ar"
-    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;" 
-    color-space="sRGB" 
-    renderer="colorManagement: true" 
-    vr-mode-ui="enabled: false" 
-    device-orientation-permission-ui="enabled: false">
-    
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { MindARThree } from 'mindar-image-three';
 
-    <!-- Alvo 0 (Calendário Cheio) -->
-    
-      <a-gltf-model id="modelo-cheio" rotation="90 0 0" position="0 0 0"></a-gltf-model>
-    
-
-    <!-- Alvo 1 (Calendário Vazio) -->
-    
-      <a-gltf-model id="modelo-vazio" rotation="90 0 0" position="0 0 0"></a-gltf-model>
-    
-  </a-scene>
-
-  <script>
+    const btn = document.getElementById('btn-iniciar');
+    const erroTxt = document.getElementById('log-erro');
+    const subtitulo = document.getElementById('subtitulo-dia');
     const parametros = new URLSearchParams(window.location.search);
     const dia = parametros.get('dia') || '3';
-    
-    document.getElementById('subtitulo-dia').innerText = `Surpresa do Dia ${dia}`;
 
-    const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
-    const escala = (dia === '1') ? '0.008 0.008 0.008' : '0.4 0.4 0.4';
-
-    const modCheio = document.getElementById('modelo-cheio');
-    const modVazio = document.getElementById('modelo-vazio');
-    modCheio.setAttribute('src', arquivoGlb);
-    modCheio.setAttribute('scale', escala);
-    modVazio.setAttribute('src', arquivoGlb);
-    modVazio.setAttribute('scale', escala);
+    // Assim que o módulo terminar de carregar, destrava o botão verde
+    subtitulo.innerText = `Surpresa do Dia ${dia}`;
+    btn.disabled = false;
+    btn.innerText = "📷 Iniciar Câmera RA";
 
     const musica = new Audio(`./musicanatal${dia}.mp3`);
-    function tocarMusica() {
+    document.getElementById('botao-som').onclick = () => {
       musica.loop = true;
       musica.play().catch(() => {});
       document.getElementById('botao-som').style.display = 'none';
-    }
+    };
 
-    function ligarAR() {
-      const btn = document.getElementById('btn-iniciar');
-      const erroTxt = document.getElementById('log-erro');
-      btn.innerText = "⏳ Abrindo câmera...";
+    btn.onclick = async () => {
       btn.disabled = true;
+      btn.innerText = "⏳ Abrindo câmera...";
+      erroTxt.innerText = "";
 
       try {
-        const cena = document.querySelector('a-scene');
-        const arSystem = cena.systems['mindar-image-system'];
-        
-        cena.addEventListener("arReady", () => {
-          document.getElementById('tela-inicio').style.display = 'none';
-          document.getElementById('aviso-topo').style.display = 'block';
-          document.getElementById('botao-som').style.display = 'block';
+        const mindarThree = new MindARThree({
+          container: document.querySelector("#container-ar"),
+          imageTargetSrc: "./targets.mind"
         });
 
-        cena.addEventListener("arError", () => {
-          btn.disabled = false;
-          btn.innerText = "📷 Tentar Novamente";
-          erroTxt.innerText = "Erro ao iniciar o rastreamento. Verifique o arquivo targets.mind.";
+        const { renderer, scene, camera } = mindarThree;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+        const luz = new THREE.DirectionalLight(0xffffff, 2);
+        luz.position.set(1, 2, 3);
+        scene.add(luz);
+
+        const ancora0 = mindarThree.addAnchor(0);
+        const ancora1 = mindarThree.addAnchor(1);
+
+        // Liga a câmera primeiro (em menos de 2 segundos)
+        await mindarThree.start();
+
+        document.getElementById('tela-inicio').style.display = 'none';
+        document.getElementById('aviso-topo').style.display = 'block';
+        document.getElementById('botao-som').style.display = 'block';
+
+        // Baixa o modelo 3D em segundo plano
+        const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
+        const escala = (dia === '1') ? 0.008 : 0.4;
+
+        const loader = new GLTFLoader();
+        let mixer = null;
+
+        loader.load(arquivoGlb, (gltf) => {
+          const modelo0 = gltf.scene;
+          modelo0.scale.set(escala, escala, escala);
+          modelo0.rotation.x = Math.PI / 2;
+          ancora0.group.add(modelo0);
+
+          const modelo1 = modelo0.clone();
+          ancora1.group.add(modelo1);
+
+          if (gltf.animations && gltf.animations.length > 0) {
+            mixer = new THREE.AnimationMixer(modelo0);
+            mixer.clipAction(gltf.animations).play();
+          }
+        }, undefined, () => {
+          document.getElementById('aviso-topo').innerText = `⚠️ Erro ao baixar ${arquivoGlb}`;
         });
 
-        arSystem.start();
+        const clock = new THREE.Clock();
+        renderer.setAnimationLoop(() => {
+          const delta = clock.getDelta();
+          if (mixer) mixer.update(delta);
+          renderer.render(scene, camera);
+        });
+
       } catch (e) {
         btn.disabled = false;
         btn.innerText = "📷 Tentar Novamente";
-        erroTxt.innerText = "Erro: " + e.message;
+        erroTxt.innerText = "Erro: " + (e.message || e);
       }
-    }
+    };
   </script>
 
 </body>
