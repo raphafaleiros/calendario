@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Calendário de Natal RA</title>
 
-  <!-- Usando Cloudflare (cdnjs) + jsDelivr que respondem instantaneamente -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://jsdelivr.net"></script>
+  <!-- Carregando 100% do seu próprio GitHub (Zero bloqueio de rede ou extensão) -->
+  <script src="./aframe.min.js"></script>
+  <script src="./mindar-image-aframe.prod.js"></script>
 
   <style>
     html, body {
@@ -47,7 +47,7 @@
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 8.0</div>
+  <div id="etiqueta-versao">Versão 9.0</div>
 
   <div id="tela-inicio">
     <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
@@ -112,10 +112,10 @@
 
       try {
         if (!window.AFRAME) {
-          throw new Error("Falha ao carregar A-Frame da rede.");
+          throw new Error("O arquivo aframe.min.js não foi encontrado no seu GitHub.");
         }
         if (!cena || !cena.systems || !cena.systems['mindar-image-system']) {
-          throw new Error("Falha ao carregar MindAR da rede.");
+          throw new Error("O arquivo mindar-image-aframe.prod.js não foi encontrado no seu GitHub.");
         }
 
         const arSystem = cena.systems['mindar-image-system'];
