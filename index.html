@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendário de Natal RA</title>
+
+  <!-- Bibliotecas oficiais do MindAR e A-Frame (versões estáveis) -->
+  <script src="https://aframe.io"></script>
+  <script src="https://jsdelivr.net"></script>
+
+  <style>
+    html, body {
+      margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+    }
+    #botao-som {
+      position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
+      background: rgba(179, 0, 0, 0.9); color: white; border: 2px solid #d4af37;
+      padding: 12px 24px; border-radius: 25px; font-family: sans-serif;
+      font-size: 15px; font-weight: bold; cursor: pointer; z-index: 99999;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Botão discreto para liberar a música no navegador do celular -->
+  <button id="botao-som" onclick="ligarSom()">🔊 Ativar Música de Natal</button>
+
+  <!-- Cena de Realidade Aumentada que liga a câmera automaticamente -->
+  <a-scene 
+    mindar-image="imageTargetSrc: https://github.com; autoStart: true;" 
+    color-space="sRGB" 
+    renderer="colorManagement: true, physicallyCorrectLights" 
+    vr-mode-ui="enabled: false" 
+    device-orientation-permission-ui="enabled: false">
+    
+    <a-assets>
+      <a-asset-item id="modeloNatal" src=""></a-asset-item>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- ALVO 0: Reconhece a primeira foto (Calendário Cheio) -->
+    
+      <a-gltf-model id="objeto-3d-cheio" src="#modeloNatal" rotation="90 0 0" position="0 0 0" scale="0.4 0.4 0.4"></a-gltf-model>
+    
+
+    <!-- ALVO 1: Reconhece a segunda foto (Calendário Vazio) -->
+    
+      <a-gltf-model id="objeto-3d-vazio" src="#modeloNatal" rotation="90 0 0" position="0 0 0" scale="0.4 0.4 0.4"></a-gltf-model>
+    
+
+  </a-scene>
+
+  <script>
+    // Lê o número do dia na URL (ex: ?dia=13). Se não houver número, abre o dia 1.
+    const parametros = new URLSearchParams(window.location.search);
+    const diaAtual = parametros.get('dia') || '1';
+
+    // Define o modelo 3D e a música correspondentes ao dia
+    const linkModelo = `https://github.com{diaAtual}.glb`;
+    const linkMusica = `https://github.com{diaAtual}.mp3`;
+
+    document.getElementById('modeloNatal').setAttribute('src', linkModelo);
+    const musicaNatal = new Audio(linkMusica);
+
+    function ligarSom() {
+      musicaNatal.loop = true;
+      musicaNatal.play().catch(e => alert("Não foi possível tocar o áudio deste dia."));
+      document.getElementById('botao-som').style.display = 'none';
+    }
+  </script>
+
+</body>
+</html>
