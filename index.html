@@ -38,13 +38,14 @@
       pointer-events: none; white-space: nowrap; display: none;
     }
     #botao-som, #botao-remirar {
-      position: fixed; bottom: 25px;
+      position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
       background: #b30000; color: #fff; border: 2px solid #d4af37;
       padding: 11px 20px; border-radius: 25px; font-size: 14px; font-weight: bold;
       cursor: pointer; z-index: 99998; display: none;
     }
-    #botao-som { left: 50%; transform: translateX(-50%); }
-    #botao-remirar { left: 50%; transform: translateX(-50%); background: #1b5e20; }
+    #botao-remirar {
+      background: #1b5e20;
+    }
     #etiqueta-versao {
       position: fixed; bottom: 10px; right: 12px;
       background: rgba(0, 0, 0, 0.6); color: #d4af37;
@@ -54,9 +55,17 @@
   </style>
 
   <script>
+    const parametros = new URLSearchParams(window.location.search);
+    const diaNum = Math.min(24, Math.max(1, parseInt(parametros.get('dia') || '1', 10) || 1));
+    const dia = String(diaNum);
+
+    const alvoParam = parametros.get('alvo');
+    const targetIndex = (alvoParam !== null && !Number.isNaN(Number(alvoParam)))
+      ? Math.max(0, parseInt(alvoParam, 10))
+      : 0;
+
     let modeloTravadoNaTela = false;
 
-    // Toca todas as animações embutidas no .glb quando o modelo carregar
     AFRAME.registerComponent('animador-glb', {
       init: function () {
         this.mixer = null;
@@ -81,285 +90,17 @@
       }
     });
 
-AFRAME.registerComponent('detector-alvo', {
+    AFRAME.registerComponent('controlador-calendario', {
       init: function () {
         const aviso = document.getElementById('aviso-topo');
-        const modelo = document.getElementById('modelo-dia');
-        const palcoLivre = document.getElementById('palco-livre');
-        const alvoEl = this.el;
-        const botaoRemirar = document.getElementById('botao-remirar');
+        const cena = this.el;
 
-        alvoEl.addEventListener("targetFound", () => {
-          if (modeloTravadoNaTela) return;
-          modeloTravadoNaTela = true;
-          aviso.innerText = "🔒 Travado na tela! Gire o modelo com o dedo.";
-
-          // Move o modelo para o palco flutuante na frente da câmera sem pausar o vídeo
-          if (modelo && palcoLivre && modelo.parentNode !== palcoLivre) {
-            palcoLivre.appendChild(modelo);
-            modelo.setAttribute('position', '0 -0.15 -1.4');
-          }
-
-          // Desativa apenas o rastreamento do alvo para não perder o modelo, mantendo a câmera rodando
-          alvoEl.setAttribute('mindar-image-target', `targetIndex: ${targetIndex}; enabled: false`);
-
-          botaoRemirar.style.display = 'block';
-        });
-
-        alvoEl.addEventListener("targetLost", () => {
+        cena.addEventListener("arReady", () => {
           if (!modeloTravadoNaTela) {
-            aviso.innerText = "🎄 Aponte a câmera para o alvo!";
+            aviso.innerText = "🎄 Câmera pronta! Aponte para o alvo!";
+            document.getElementById('dica-gesto').style.display = 'block';
           }
         });
-      }
-    });
 
-    AFRAME.registerComponent('detector-alvo', {
-      init: function () {
-        const aviso = document.getElementById('aviso-topo');
-        const cena = document.getElementById('cena-ar');
-        const modelo = document.getElementById('modelo-dia');
-        const palcoLivre = document.getElementById('palco-livre');
-        const alvoEl = this.el;
-        const botaoRemirar = document.getElementById('botao-remirar');
-
-        alvoEl.addEventListener("targetFound", () => {
-          if (modeloTravadoNaTela) return;
-          modeloTravadoNaTela = true;
-          aviso.innerText = "🔒 Travado na tela! Gire o modelo com o dedo.";
-
-          // Solta o modelo do alvo e fixa no palco flutuante na frente da câmera
-          if (modelo && palcoLivre && modelo.parentNode !== palcoLivre) {
-            palcoLivre.appendChild(modelo);
-            modelo.setAttribute('position', '0 -0.15 -1.4');
-          }
-
-          // Pausa o rastreamento para não perder o modelo ao mexer o celular
-          const arSystem = cena.systems && cena.systems["mindar-image-system"];
-          if (arSystem && typeof arSystem.pause === 'function') {
-            arSystem.pause();
-          }
-
-          botaoRemirar.style.display = 'block';
-        });
-
-        alvoEl.addEventListener("targetLost", () => {
-          if (!modeloTravadoNaTela) {
-            aviso.innerText = "🎄 Aponte a câmera para o alvo!";
-          }
-        });
-      }
-    });
-
-    AFRAME.registerComponent('controle-toque-modelo', {
-      schema: {
-        escalaBase: { type: 'number', default: 0.8 },
-        rotacaoInicial: { type: 'vec3', default: { x: 0, y: 0, z: 0 } }
-      },
-      init: function () {
-        this.arrastando = false;
-        this.ultimoX = 0;
-        this.ultimoY = 0;
-        this.distanciaInicialPinca = 0;
-        this.fatorEscalaAtual = 1;
-        this.fatorEscalaInicioPinça = 1;
-
-        this.rotX = this.data.rotacaoInicial.x;
-        this.rotY = this.data.rotacaoInicial.y;
-        this.rotZ = this.data.rotacaoInicial.z;
-        this.aplicarTransformacao();
-
-        this.onTouchStart = this.onTouchStart.bind(this);
-        this.onTouchMove = this.onTouchMove.bind(this);
-        this.onTouchEnd = this.onTouchEnd.bind(this);
-
-        window.addEventListener('touchstart', this.onTouchStart, { passive: false });
-        window.addEventListener('touchmove', this.onTouchMove, { passive: false });
-        window.addEventListener('touchend', this.onTouchEnd, { passive: false });
-      },
-      update: function () {
-        this.rotX = this.data.rotacaoInicial.x;
-        this.rotY = this.data.rotacaoInicial.y;
-        this.rotZ = this.data.rotacaoInicial.z;
-        this.fatorEscalaAtual = 1;
-        this.aplicarTransformacao();
-      },
-      distanciaDoisToques: function (t1, t2) {
-        return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-      },
-      onTouchStart: function (e) {
-        if (e.target.closest('button')) return;
-        if (e.touches.length === 1) {
-          this.arrastando = true;
-          this.ultimoX = e.touches[0].clientX;
-          this.ultimoY = e.touches[0].clientY;
-        } else if (e.touches.length === 2) {
-          this.arrastando = false;
-          this.distanciaInicialPinca = this.distanciaDoisToques(e.touches[0], e.touches[1]);
-          this.fatorEscalaInicioPinça = this.fatorEscalaAtual;
-        }
-      },
-      onTouchMove: function (e) {
-        if (e.touches.length === 1 && this.arrastando) {
-          e.preventDefault();
-          const x = e.touches[0].clientX;
-          const y = e.touches[0].clientY;
-          this.rotY += (x - this.ultimoX) * 0.7;
-          this.rotX = Math.max(-60, Math.min(60, this.rotX + (y - this.ultimoY) * 0.4));
-          this.ultimoX = x;
-          this.ultimoY = y;
-          this.aplicarTransformacao();
-        } else if (e.touches.length === 2 && this.distanciaInicialPinca > 0) {
-          e.preventDefault();
-          const distAtual = this.distanciaDoisToques(e.touches[0], e.touches[1]);
-          this.fatorEscalaAtual = Math.max(0.3, Math.min(3.5, this.fatorEscalaInicioPinça * (distAtual / this.distanciaInicialPinca)));
-          this.aplicarTransformacao();
-        }
-      },
-      onTouchEnd: function (e) {
-        if (e.touches.length === 0) {
-          this.arrastando = false;
-          this.distanciaInicialPinca = 0;
-        } else if (e.touches.length === 1) {
-          this.distanciaInicialPinca = 0;
-          this.arrastando = true;
-          this.ultimoX = e.touches[0].clientX;
-          this.ultimoY = e.touches[0].clientY;
-        }
-      },
-      aplicarTransformacao: function () {
-        this.el.setAttribute('rotation', `${this.rotX} ${this.rotY} ${this.rotZ}`);
-        const s = this.data.escalaBase * this.fatorEscalaAtual;
-        this.el.setAttribute('scale', `${s} ${s} ${s}`);
-      },
-      remove: function () {
-        window.removeEventListener('touchstart', this.onTouchStart);
-        window.removeEventListener('touchmove', this.onTouchMove);
-        window.removeEventListener('touchend', this.onTouchEnd);
-      }
-    });
-  </script>
-</head>
-<body>
-
-  <div id="etiqueta-versao">Versão 24.0 (Híbrido + Anim)</div>
-  <div id="aviso-topo">🎄 Toque abaixo para ligar a câmera</div>
-
-  <div id="tela-inicio">
-    <button id="botao-iniciar" onclick="iniciarExperiencia()">📷 Iniciar Câmera e Música</button>
-  </div>
-
-  <div id="dica-gesto">👆 1 dedo: girar • 🤏 2 dedos: zoom</div>
-  <button id="botao-som" onclick="tocarMusica()">🔊 Ativar Música</button>
-  <button id="botao-remirar" onclick="remirarAlvo()">🔄 Mirar novamente</button>
-
-  <a-scene
-    id="cena-ar"
-    controlador-calendario
-    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiScanning: yes; uiLoading: no; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 12;"
-    color-space="sRGB"
-    renderer="colorManagement: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
-
-    <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
-    <a-light type="directional" color="#ffffff" intensity="1.5" position="1 2 3"></a-light>
-
-    <a-camera position="0 0 0" look-controls="enabled: false">
-      <!-- Palco onde o modelo fica flutuando após reconhecer -->
-      <a-entity id="palco-livre"></a-entity>
-    </a-camera>
-
-    <a-entity id="alvo-dia" mindar-image-target="targetIndex: 0" detector-alvo>
-      <a-box id="cubo-teste" position="0 0 0.1" scale="0.2 0.2 0.2" color="#ff0000" visible="false"></a-box>
-      <a-gltf-model id="modelo-dia" rotation="0 0 0" position="0 0 0" animador-glb></a-gltf-model>
-    </a-entity>
-  </a-scene>
-
-  <script>
-    const parametros = new URLSearchParams(window.location.search);
-    const diaNum = Math.min(24, Math.max(1, parseInt(parametros.get('dia') || '1', 10) || 1));
-    const dia = String(diaNum);
-
-    const alvoParam = parametros.get('alvo');
-    const targetIndex = (alvoParam !== null && !Number.isNaN(Number(alvoParam)))
-      ? Math.max(0, parseInt(alvoParam, 10))
-      : 0;
-
-    document.getElementById('alvo-dia').setAttribute('mindar-image-target', `targetIndex: ${targetIndex}`);
-
-    const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
-    const escalaBase = (dia === '1') ? 0.025 : 0.35;
-
-    const modelo = document.getElementById('modelo-dia');
-    const cuboTeste = document.getElementById('cubo-teste');
-
-    modelo.addEventListener('model-error', () => {
-      cuboTeste.setAttribute('visible', 'true');
-      document.getElementById('aviso-topo').innerText = `⚠️ Erro ao carregar ${arquivoGlb}`;
-    });
-
-    modelo.setAttribute('src', arquivoGlb);
-    modelo.setAttribute('scale', `${escalaBase} ${escalaBase} ${escalaBase}`);
-    modelo.setAttribute('controle-toque-modelo', `escalaBase: ${escalaBase}; rotacaoInicial: 0 0 0`);
-
-    const musica = new Audio(`./musicanatal${dia}.mp3`);
-    musica.addEventListener('error', () => {
-      musica.src = './musicanatal1.mp3';
-    });
-
-    function tocarMusica() {
-      musica.loop = true;
-      musica.play().catch(() => {});
-      document.getElementById('botao-som').style.display = 'none';
-    }
-
-    function iniciarExperiencia() {
-      const cena = document.getElementById('cena-ar');
-      const aviso = document.getElementById('aviso-topo');
-      document.getElementById('tela-inicio').style.display = 'none';
-      aviso.innerText = "⏳ Ligando câmera...";
-
-      tocarMusica();
-
-      const iniciarMindAR = () => {
-        const arSystem = cena.systems && cena.systems["mindar-image-system"];
-        if (arSystem) {
-          arSystem.start();
-        } else {
-          aviso.innerText = "❌ Sistema MindAR não inicializado.";
-        }
-      };
-
-      if (cena.hasLoaded) {
-        iniciarMindAR();
-      } else {
-        cena.addEventListener("loaded", iniciarMindAR, { once: true });
-      }
-    }
-
-    function remirarAlvo() {
-      const cena = document.getElementById('cena-ar');
-      const modelo = document.getElementById('modelo-dia');
-      const alvoEl = document.getElementById('alvo-dia');
-      const aviso = document.getElementById('aviso-topo');
-
-      modeloTravadoNaTela = false;
-      document.getElementById('botao-remirar').style.display = 'none';
-
-      if (modelo && alvoEl && modelo.parentNode !== alvoEl) {
-        alvoEl.appendChild(modelo);
-        modelo.setAttribute('position', '0 0 0');
-      }
-
-      const arSystem = cena.systems && cena.systems["mindar-image-system"];
-      if (arSystem && typeof arSystem.unpause === 'function') {
-        arSystem.unpause();
-      }
-
-      aviso.innerText = "🎄 Aponte a câmera para o alvo!";
-    }
-  </script>
-
-</body>
-</html>
+        cena.addEventListener("arError", (e) => {
+          const msg = (e && e.detail && (e.detail.error?.message || e.detail.error)) || "VIDEO_FAIL ao abrir câmera";
