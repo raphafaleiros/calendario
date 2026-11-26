@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calendário de Natal RA</title>
 
-  <!-- Importação direta e moderna do Three.js e MindAR puro (Sem A-Frame) -->
   <script type="importmap">
     {
       "imports": {
@@ -19,30 +18,54 @@
   <style>
     html, body {
       margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
-      font-family: sans-serif; background-color: #000;
+      font-family: sans-serif; background-color: #1a1a1a; color: white;
     }
     #container-ar {
       width: 100vw; height: 100vh; position: relative; overflow: hidden;
+    }
+    #tela-inicio {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #1a1a1a; z-index: 99999; text-align: center; padding: 20px; box-sizing: border-box;
+    }
+    #btn-iniciar {
+      background: #2e7d32; color: white; border: 3px solid #d4af37;
+      padding: 16px 32px; border-radius: 30px; font-size: 18px; font-weight: bold;
+      cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
     #status {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.8); color: #fff; padding: 10px 18px;
       border-radius: 20px; font-size: 13px; font-weight: bold;
-      z-index: 99999; text-align: center; width: 85%; max-width: 320px;
+      z-index: 999999; text-align: center; width: 85%; max-width: 320px;
     }
     #botao-som {
       position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
       background: #b30000; color: #fff; border: 2px solid #d4af37;
       padding: 12px 24px; border-radius: 25px; font-size: 15px; font-weight: bold;
-      cursor: pointer; z-index: 99999;
+      cursor: pointer; z-index: 999999; display: none;
     }
   </style>
 </head>
 <body>
 
-  <div id="status">⏳ Ligando câmera...</div>
+  <div id="status">Pronto para iniciar</div>
+
+  <div id="tela-inicio">
+    <h2 style="color: #d4af37; margin-bottom: 20px;">🎄 Calendário de Natal RA</h2>
+    <button id="btn-iniciar">📷 Abrir Câmera</button>
+    <p id="log-erro" style="color: #ff6b6b; font-size: 12px; margin-top: 20px;"></p>
+  </div>
+
   <button id="botao-som">🔊 Ativar Música</button>
   <div id="container-ar"></div>
+
+  <!-- Captura qualquer erro antes mesmo do módulo carregar -->
+  <script>
+    window.onerror = function(msg) {
+      document.getElementById('log-erro').innerText = "Erro de script: " + msg;
+    };
+  </script>
 
   <script type="module">
     import * as THREE from 'three';
@@ -50,21 +73,27 @@
     import { MindARThree } from 'mindar-image-three';
 
     const status = document.getElementById('status');
+    const logErro = document.getElementById('log-erro');
+    const telaInicio = document.getElementById('tela-inicio');
+    const btnIniciar = document.getElementById('btn-iniciar');
+    const btnSom = document.getElementById('botao-som');
+
     const dia = new URLSearchParams(window.location.search).get('dia') || '3';
     const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
     const escala = (dia === '1') ? 0.008 : 0.4;
 
-    // Configura o som do dia
     const musica = new Audio(`./musicanatal${dia}.mp3`);
-    document.getElementById('botao-som').onclick = () => {
+    btnSom.onclick = () => {
       musica.loop = true;
       musica.play().catch(() => {});
-      document.getElementById('botao-som').style.display = 'none';
+      btnSom.style.display = 'none';
     };
 
-    const iniciarAR = async () => {
+    btnIniciar.onclick = async () => {
+      btnIniciar.innerText = "⏳ Abrindo...";
+      btnIniciar.disabled = true;
+
       try {
-        // 1. Inicializa o MindAR apontando para o seu targets.mind
         const mindarThree = new MindARThree({
           container: document.querySelector("#container-ar"),
           imageTargetSrc: "./targets.mind"
@@ -72,41 +101,39 @@
 
         const { renderer, scene, camera } = mindarThree;
 
-        // Iluminação para o modelo 3D não ficar escuro
-        const luzAmbiente = new THREE.AmbientLight(0xffffff, 1.5);
-        scene.add(luzAmbiente);
-        const luzDirecional = new THREE.DirectionalLight(0xffffff, 2);
-        luzDirecional.position.set(1, 2, 3);
-        scene.add(luzDirecional);
+        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+        const luz = new THREE.DirectionalLight(0xffffff, 2);
+        luz.position.set(1, 2, 3);
+        scene.add(luz);
 
-        // Cria âncoras para a Foto 0 (Cheio) e Foto 1 (Vazio)
         const ancora0 = mindarThree.addAnchor(0);
         const ancora1 = mindarThree.addAnchor(1);
 
-        // 2. Liga a câmera imediatamente
         await mindarThree.start();
+
+        // Esconde a tela preta e mostra a câmera
+        telaInicio.style.display = 'none';
+        btnSom.style.display = 'block';
         status.innerText = `🎄 Dia ${dia}: Aponte para o Calendário!`;
 
-        // 3. Carrega o modelo 3D do dia em segundo plano
         const loader = new GLTFLoader();
         let mixer0 = null;
-        let mixer1 = null;
 
         loader.load(arquivoGlb, (gltf) => {
           const modelo0 = gltf.scene;
           modelo0.scale.set(escala, escala, escala);
-          modelo0.rotation.x = Math.PI / 2; // Deixa em pé sobre o calendário
+          modelo0.rotation.x = Math.PI / 2;
           ancora0.group.add(modelo0);
 
-          // Clona para o segundo alvo (calendário vazio)
           const modelo1 = modelo0.clone();
           ancora1.group.add(modelo1);
 
-          // Ativa animação se o modelo tiver (ex: Dia 3)
           if (gltf.animations && gltf.animations.length > 0) {
             mixer0 = new THREE.AnimationMixer(modelo0);
             mixer0.clipAction(gltf.animations[0]).play();
           }
+        }, undefined, (err) => {
+          status.innerText = "❌ Erro ao baixar modelo 3D: " + arquivoGlb;
         });
 
         const clock = new THREE.Clock();
@@ -117,11 +144,11 @@
         });
 
       } catch (erro) {
-        status.innerText = "❌ Erro ao abrir câmera: " + erro.message;
+        btnIniciar.innerText = "📷 Tentar Novamente";
+        btnIniciar.disabled = false;
+        logErro.innerText = "Falha: " + (erro.message || erro);
       }
     };
-
-    iniciarAR();
   </script>
 
 </body>
