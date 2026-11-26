@@ -20,31 +20,11 @@
       z-index: 99998; text-align: center; width: 85%; max-width: 340px;
       pointer-events: none;
     }
-    #tela-inicio {
-      position: fixed; inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      z-index: 99999; gap: 14px;
-    }
-    #botao-iniciar {
-      background: #1b5e20; color: #fff; border: 2px solid #d4af37;
-      padding: 15px 28px; border-radius: 28px; font-size: 16px; font-weight: bold;
-      cursor: pointer;
-    }
-    #dica-gesto {
-      position: fixed; bottom: 82px; left: 50%; transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.65); color: #fff; padding: 6px 14px;
-      border-radius: 14px; font-size: 12px; z-index: 99998;
-      pointer-events: none; white-space: nowrap; display: none;
-    }
-    #botao-som, #botao-remirar {
+    #botao-som {
       position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
       background: #b30000; color: #fff; border: 2px solid #d4af37;
-      padding: 11px 20px; border-radius: 25px; font-size: 14px; font-weight: bold;
-      cursor: pointer; z-index: 99998; display: none;
-    }
-    #botao-remirar {
-      background: #1b5e20;
+      padding: 12px 24px; border-radius: 25px; font-size: 15px; font-weight: bold;
+      cursor: pointer; z-index: 99998;
     }
     #etiqueta-versao {
       position: fixed; bottom: 10px; right: 12px;
@@ -56,7 +36,7 @@
 
   <script>
     const parametros = new URLSearchParams(window.location.search);
-    const diaNum = Math.min(24, Math.max(1, parseInt(parametros.get('dia') || '1', 10) || 1));
+    const diaNum = Math.min(24, Math.max(1, parseInt(parametros.get('dia') || '3', 10) || 3));
     const dia = String(diaNum);
 
     const alvoParam = parametros.get('alvo');
@@ -64,8 +44,7 @@
       ? Math.max(0, parseInt(alvoParam, 10))
       : 0;
 
-    let modeloTravadoNaTela = false;
-
+    // Toca as animações embutidas no .glb quando houver clipes no arquivo
     AFRAME.registerComponent('animador-glb', {
       init: function () {
         this.mixer = null;
@@ -96,16 +75,11 @@
         const cena = this.el;
 
         cena.addEventListener("arReady", function () {
-          if (!modeloTravadoNaTela) {
-            aviso.innerText = "🎄 Câmera pronta! Aponte para o alvo!";
-            document.getElementById('dica-gesto').style.display = 'block';
-          }
+          aviso.innerText = "🎄 Câmera pronta! Aponte para o alvo!";
         });
 
-        cena.addEventListener("arError", function (e) {
-          const msg = (e && e.detail && (e.detail.error?.message || e.detail.error)) || "VIDEO_FAIL ao abrir câmera";
-          aviso.innerText = "❌ " + msg;
-          document.getElementById('tela-inicio').style.display = 'flex';
+        cena.addEventListener("arError", function () {
+          aviso.innerText = "❌ Erro ao ler ./targets.mind ou abrir câmera.";
         });
       }
     });
@@ -113,55 +87,57 @@
     AFRAME.registerComponent('detector-alvo', {
       init: function () {
         const aviso = document.getElementById('aviso-topo');
-        const cena = document.getElementById('cena-ar');
-        const modelo = document.getElementById('modelo-dia');
-        const palcoLivre = document.getElementById('palco-livre');
-        const alvoEl = this.el;
-        const botaoRemirar = document.getElementById('botao-remirar');
-
-        alvoEl.addEventListener("targetFound", function () {
-          if (modeloTravadoNaTela) return;
-          modeloTravadoNaTela = true;
-          aviso.innerText = "🔒 Travado na tela! Gire o modelo com o dedo.";
-
-          if (modelo && palcoLivre && modelo.parentNode !== palcoLivre) {
-            palcoLivre.appendChild(modelo);
-            modelo.setAttribute('position', '0 -0.15 -1.4');
-          }
-
-          alvoEl.setAttribute('mindar-image-target', "targetIndex: " + targetIndex + "; enabled: false");
-          botaoRemirar.style.display = 'block';
+        this.el.addEventListener("targetFound", function () {
+          aviso.innerText = "✅ RECONHECIDO!";
         });
-
-        alvoEl.addEventListener("targetLost", function () {
-          if (!modeloTravadoNaTela) {
-            aviso.innerText = "🎄 Aponte a câmera para o alvo!";
-          }
+        this.el.addEventListener("targetLost", function () {
+          aviso.innerText = "🎄 Aponte a câmera para o alvo!";
         });
       }
     });
+  </script>
+</head>
+<body>
 
-    AFRAME.registerComponent('controle-toque-modelo', {
-      schema: {
-        escalaBase: { type: 'number', default: 0.35 },
-        rotacaoInicial: { type: 'vec3', default: { x: 0, y: 0, z: 0 } }
-      },
-      init: function () {
-        this.arrastando = false;
-        this.ultimoX = 0;
-        this.ultimoY = 0;
-        this.distanciaInicialPinca = 0;
-        this.fatorEscalaAtual = 1;
-        this.fatorEscalaInicioPinca = 1;
+  <div id="etiqueta-versao">Versão 25.0</div>
+  <div id="aviso-topo">⏳ Ligando câmera...</div>
+  <button id="botao-som" onclick="tocarMusica()">🔊 Ativar Música</button>
 
-        this.rotX = this.data.rotacaoInicial.x;
-        this.rotY = this.data.rotacaoInicial.y;
-        this.rotZ = this.data.rotacaoInicial.z;
-        this.aplicarTransformacao();
+  <a-scene
+    controlador-calendario
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: yes; uiLoading: no;"
+    color-space="sRGB"
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
 
-        this.onTouchStart = this.onTouchStart.bind(this);
-        this.onTouchMove = this.onTouchMove.bind(this);
-        this.onTouchEnd = this.onTouchEnd.bind(this);
+    <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
+    <a-light type="directional" color="#ffffff" intensity="1.5" position="1 2 3"></a-light>
 
-        window.addEventListener('touchstart', this.onTouchStart, { passive: false });
-        window.addEventListener('touchmove', this.on
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity id="alvo-dia" mindar-image-target="targetIndex: 0" detector-alvo>
+      <a-gltf-model id="modelo-dia" rotation="90 0 0" position="0 0 0" animador-glb></a-gltf-model>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    document.getElementById('alvo-dia').setAttribute('mindar-image-target', "targetIndex: " + targetIndex);
+
+    const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : "./" + dia + ".glb";
+    const escala = (dia === '1') ? '0.015 0.015 0.015' : '0.8 0.8 0.8';
+
+    const modelo = document.getElementById('modelo-dia');
+    modelo.setAttribute('src', arquivoGlb);
+    modelo.setAttribute('scale', escala);
+
+    const musica = new Audio("./musicanatal" + dia + ".mp3");
+    function tocarMusica() {
+      musica.loop = true;
+      musica.play().catch(function () {});
+      document.getElementById('botao-som').style.display = 'none';
+    }
+  </script>
+
+</body>
+</html>
