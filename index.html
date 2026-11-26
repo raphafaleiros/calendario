@@ -69,13 +69,13 @@
   <div id="aviso-topo">⏳ Ligando câmera...</div>
   <button id="botao-som" onclick="tocarMusica()">🔊 Ativar Música</button>
 
-  <a-scene
-    controlador-calendario
-    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: yes; uiLoading: no;"
-    color-space="sRGB"
-    renderer="colorManagement: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
+<a-scene
+  controlador-calendario
+  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: yes; uiLoading: no; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 10;"
+  color-space="sRGB"
+  renderer="colorManagement: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false">
 
     <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
     <a-light type="directional" color="#ffffff" intensity="1.5" position="1 2 3"></a-light>
