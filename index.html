@@ -81,22 +81,35 @@
       }
     });
 
-    AFRAME.registerComponent('controlador-calendario', {
+AFRAME.registerComponent('detector-alvo', {
       init: function () {
         const aviso = document.getElementById('aviso-topo');
-        const cena = this.el;
+        const modelo = document.getElementById('modelo-dia');
+        const palcoLivre = document.getElementById('palco-livre');
+        const alvoEl = this.el;
+        const botaoRemirar = document.getElementById('botao-remirar');
 
-        cena.addEventListener("arReady", () => {
-          if (!modeloTravadoNaTela) {
-            aviso.innerText = "🎄 Câmera pronta! Aponte para o alvo!";
-            document.getElementById('dica-gesto').style.display = 'block';
+        alvoEl.addEventListener("targetFound", () => {
+          if (modeloTravadoNaTela) return;
+          modeloTravadoNaTela = true;
+          aviso.innerText = "🔒 Travado na tela! Gire o modelo com o dedo.";
+
+          // Move o modelo para o palco flutuante na frente da câmera sem pausar o vídeo
+          if (modelo && palcoLivre && modelo.parentNode !== palcoLivre) {
+            palcoLivre.appendChild(modelo);
+            modelo.setAttribute('position', '0 -0.15 -1.4');
           }
+
+          // Desativa apenas o rastreamento do alvo para não perder o modelo, mantendo a câmera rodando
+          alvoEl.setAttribute('mindar-image-target', `targetIndex: ${targetIndex}; enabled: false`);
+
+          botaoRemirar.style.display = 'block';
         });
 
-        cena.addEventListener("arError", (e) => {
-          const msg = (e && e.detail && (e.detail.error?.message || e.detail.error)) || "VIDEO_FAIL ao abrir câmera";
-          aviso.innerText = `❌ ${msg}`;
-          document.getElementById('tela-inicio').style.display = 'flex';
+        alvoEl.addEventListener("targetLost", () => {
+          if (!modeloTravadoNaTela) {
+            aviso.innerText = "🎄 Aponte a câmera para o alvo!";
+          }
         });
       }
     });
