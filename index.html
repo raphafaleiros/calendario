@@ -9,14 +9,13 @@
     html, body {
       margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
       font-family: sans-serif;
-      background: transparent !important; /* Transparente para o vídeo da câmera aparecer */
+      background: transparent !important;
       color: #fff;
     }
     #container-ar {
       width: 100vw; height: 100vh; position: fixed; top: 0; left: 0;
       overflow: hidden; background: transparent !important;
     }
-    /* Garante que o vídeo da câmera fique visível em tela cheia */
     #container-ar video {
       position: absolute !important;
       top: 0 !important;
@@ -71,7 +70,7 @@
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 5.2</div>
+  <div id="etiqueta-versao">Versão 5.3</div>
 
   <div id="tela-inicio">
     <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
@@ -144,10 +143,10 @@
           const modelo0 = gltf.scene;
           modelo0.scale.set(escala, escala, escala);
           modelo0.rotation.x = Math.PI / 2;
-          ancora0.group.add(modelo0);
+          anchor0.group.add(modelo0);
 
           const modelo1 = modelo0.clone();
-          ancora1.group.add(modelo1);
+          anchor1.group.add(modelo1);
 
           if (gltf.animations && gltf.animations.length > 0) {
             mixer = new THREE.AnimationMixer(modelo0);
