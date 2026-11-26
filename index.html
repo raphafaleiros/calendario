@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Calendário de Natal RA</title>
 
-  <script src="https://aframe.io"></script>
+  <!-- Usando Cloudflare (cdnjs) + jsDelivr que respondem instantaneamente -->
+  <script src="https://cloudflare.com"></script>
   <script src="https://jsdelivr.net"></script>
 
   <style>
@@ -46,7 +47,7 @@
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 7.0</div>
+  <div id="etiqueta-versao">Versão 8.0</div>
 
   <div id="tela-inicio">
     <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
@@ -110,8 +111,11 @@
       erroTxt.innerText = "";
 
       try {
+        if (!window.AFRAME) {
+          throw new Error("Falha ao carregar A-Frame da rede.");
+        }
         if (!cena || !cena.systems || !cena.systems['mindar-image-system']) {
-          throw new Error("Aguarde 2 segundos para o sistema terminar de carregar e toque novamente.");
+          throw new Error("Falha ao carregar MindAR da rede.");
         }
 
         const arSystem = cena.systems['mindar-image-system'];
@@ -125,7 +129,7 @@
         cena.addEventListener("arError", () => {
           btn.disabled = false;
           btn.innerText = "📷 Tentar Novamente";
-          erroTxt.innerText = "Erro ao abrir câmera. Verifique se você permitiu o acesso no navegador.";
+          erroTxt.innerText = "Erro ao abrir câmera. Verifique as permissões do navegador.";
         });
 
         arSystem.start();
