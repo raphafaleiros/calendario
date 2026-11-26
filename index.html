@@ -19,12 +19,6 @@
       border-radius: 20px; font-size: 13px; font-weight: bold;
       z-index: 99998; text-align: center; width: 85%; max-width: 320px;
     }
-    #botao-som {
-      position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
-      background: #b30000; color: #fff; border: 2px solid #d4af37;
-      padding: 12px 24px; border-radius: 25px; font-size: 15px; font-weight: bold;
-      cursor: pointer; z-index: 99998;
-    }
     #etiqueta-versao {
       position: fixed; bottom: 10px; right: 12px;
       background: rgba(0, 0, 0, 0.6); color: #d4af37;
@@ -33,19 +27,15 @@
     }
   </style>
 
-  <!-- Registra os eventos ANTES da cena iniciar para nunca perder o sinal -->
   <script>
     AFRAME.registerComponent('controlador-calendario', {
       init: function () {
         const aviso = document.getElementById('aviso-topo');
-        const cena = this.el;
-
-        cena.addEventListener("arReady", () => {
-          aviso.innerText = "🎄 Câmera pronta! Aponte para o alvo!";
+        this.el.addEventListener("arReady", () => {
+          aviso.innerText = "🎄 Câmera pronta! Aponte para o cartão azul!";
         });
-
-        cena.addEventListener("arError", () => {
-          aviso.innerText = "❌ Erro ao ler ./targets.mind ou abrir câmera.";
+        this.el.addEventListener("arError", () => {
+          aviso.innerText = "❌ Erro ao iniciar o rastreamento.";
         });
       }
     });
@@ -57,7 +47,7 @@
           aviso.innerText = "✅ RECONHECIDO!";
         });
         this.el.addEventListener("targetLost", () => {
-          aviso.innerText = "🎄 Aponte a câmera para o alvo!";
+          aviso.innerText = "🎄 Aponte a câmera para o cartão azul!";
         });
       }
     });
@@ -65,13 +55,13 @@
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 16.0</div>
+  <div id="etiqueta-versao">Versão 16.1</div>
   <div id="aviso-topo">⏳ Ligando câmera...</div>
-  <button id="botao-som" onclick="tocarMusica()">🔊 Ativar Música</button>
 
+  <!-- Apontando via jsDelivr (sem bloqueio) para o card.mind oficial desse cartão azul -->
   <a-scene 
     controlador-calendario
-    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: yes; uiLoading: no;" 
+    mindar-image="imageTargetSrc: https://jsdelivr.net; autoStart: true; uiScanning: yes; uiLoading: no;" 
     color-space="sRGB" 
     renderer="colorManagement: true" 
     vr-mode-ui="enabled: false" 
@@ -84,28 +74,9 @@
 
     
       <a-box position="0 0 0.1" scale="0.3 0.3 0.3" color="#ff0000"></a-box>
-      <a-gltf-model id="modelo-dia" rotation="90 0 0" position="0 0 0"></a-gltf-model>
+      <a-gltf-model src="./3.glb" rotation="90 0 0" position="0 0 0" scale="0.8 0.8 0.8"></a-gltf-model>
     
   </a-scene>
-
-  <script>
-    const parametros = new URLSearchParams(window.location.search);
-    const dia = parametros.get('dia') || '3';
-
-    const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
-    const escala = (dia === '1') ? '0.015 0.015 0.015' : '0.8 0.8 0.8';
-
-    const modelo = document.getElementById('modelo-dia');
-    modelo.setAttribute('src', arquivoGlb);
-    modelo.setAttribute('scale', escala);
-
-    const musica = new Audio(`./musicanatal${dia}.mp3`);
-    function tocarMusica() {
-      musica.loop = true;
-      musica.play().catch(() => {});
-      document.getElementById('botao-som').style.display = 'none';
-    }
-  </script>
 
 </body>
 </html>
