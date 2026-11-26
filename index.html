@@ -3,164 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calendário de Natal RA</title>
-
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com",
-        "three/addons/": "https://unpkg.com",
-        "mindar-image-three": "https://jsdelivr.net"
-      }
-    }
-  </script>
-
-  <style>
-    html, body {
-      margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #121212; color: #ffffff;
-    }
-    #container {
-      width: 100vw; height: 100vh; position: relative; overflow: hidden;
-    }
-    #painel-inicial {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: rgba(18, 18, 18, 0.95); z-index: 1000; text-align: center; padding: 20px; box-sizing: border-box;
-    }
-    #startButton {
-      background: #2e7d32; color: #ffffff; border: 3px solid #d4af37;
-      padding: 16px 32px; border-radius: 30px; font-size: 18px; font-weight: bold;
-      cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }
-    #startButton:disabled {
-      background: #555555; border-color: #888888; cursor: not-allowed;
-    }
-    #aviso-status {
-      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8); color: #ffffff; padding: 10px 18px;
-      border-radius: 20px; font-size: 13px; font-weight: bold;
-      z-index: 999; text-align: center; width: 85%; max-width: 320px; display: none;
-    }
-    #botao-som {
-      position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
-      background: #b30000; color: #ffffff; border: 2px solid #d4af37;
-      padding: 12px 24px; border-radius: 25px; font-size: 15px; font-weight: bold;
-      cursor: pointer; z-index: 999; display: none;
-    }
-  </style>
+  <title>Teste de Câmera</title>
 </head>
-<body>
+<body style="background:#111; color:#fff; font-family:sans-serif; text-align:center; padding-top:40px;">
 
-  <div id="aviso-status">🎄 Aponte a câmera para o Calendário!</div>
+  <h2>Teste Isolado de Câmera v2</h2>
+  <button onclick="ligar()" style="padding:16px 30px; font-size:18px; background:#2e7d32; color:#fff; border:none; border-radius:25px;">
+    📷 Testar Câmera Agora
+  </button>
+  
+  <p id="aviso" style="color:#ffeb3b; margin-top:20px; padding:0 15px;"></p>
+  <video id="video" autoplay playsinline style="width:90%; max-width:350px; margin-top:15px; border:2px solid #d4af37;"></video>
 
-  <div id="painel-inicial">
-    <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
-    <p id="subtitulo-dia" style="margin-bottom: 25px; color: #cccccc;">Carregando configuração...</p>
-    <button id="startButton">📷 Abrir Câmera</button>
-    <p id="mensagem-erro" style="color: #ff6b6b; font-size: 13px; margin-top: 20px; max-width: 300px;"></p>
-  </div>
-
-  <button id="botao-som">🔊 Ativar Música</button>
-  <div id="container"></div>
-
-  <script type="module">
-    import * as THREE from 'three';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-    import { MindARThree } from 'mindar-image-three';
-
-    const parametros = new URLSearchParams(window.location.search);
-    const dia = parametros.get('dia') || '3';
-    const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
-    const escala = (dia === '1') ? 0.008 : 0.4;
-
-    document.getElementById('subtitulo-dia').innerText = `Surpresa do Dia ${dia}`;
-
-    const startButton = document.getElementById('startButton');
-    const painelInicial = document.getElementById('painel-inicial');
-    const avisoStatus = document.getElementById('aviso-status');
-    const mensagemErro = document.getElementById('mensagem-erro');
-    const botaoSom = document.getElementById('botao-som');
-
-    const musica = new Audio(`./musicanatal${dia}.mp3`);
-    botaoSom.addEventListener('click', () => {
-      musica.loop = true;
-      musica.play().catch(() => {});
-      botaoSom.style.display = 'none';
-    });
-
-    let mindarThree = null;
-
-    const start = async () => {
-      startButton.disabled = true;
-      startButton.innerText = "⏳ Iniciando câmera...";
-      mensagemErro.innerText = "";
-
+  <script>
+    async function ligar() {
+      const aviso = document.getElementById('aviso');
+      aviso.innerText = "⏳ Pedindo permissão ao celular...";
+      
       try {
-        mindarThree = new MindARThree({
-          container: document.querySelector("#container"),
-          imageTargetSrc: "./targets.mind"
-        });
-
-        const { renderer, scene, camera } = mindarThree;
-
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-        dirLight.position.set(1, 2, 3);
-        scene.add(dirLight);
-
-        const anchor0 = mindarThree.addAnchor(0);
-        const anchor1 = mindarThree.addAnchor(1);
-
-        const loader = new GLTFLoader();
-        let mixer = null;
-
-        loader.load(
-          arquivoGlb,
-          (gltf) => {
-            const model0 = gltf.scene;
-            model0.scale.set(escala, escala, escala);
-            model0.rotation.x = Math.PI / 2;
-            anchor0.group.add(model0);
-
-            const model1 = model0.clone();
-            anchor1.group.add(model1);
-
-            if (gltf.animations && gltf.animations.length > 0) {
-              mixer = new THREE.AnimationMixer(model0);
-              mixer.clipAction(gltf.animations[0]).play();
-            }
-          },
-          undefined,
-          () => {
-            avisoStatus.innerText = `⚠️ Modelo ${arquivoGlb} não encontrado.`;
-          }
-        );
-
-        await mindarThree.start();
-
-        painelInicial.style.display = 'none';
-        avisoStatus.style.display = 'block';
-        avisoStatus.innerText = `🎄 Dia ${dia}: Aponte para o Calendário!`;
-        botaoSom.style.display = 'block';
-
-        const clock = new THREE.Clock();
-        renderer.setAnimationLoop(() => {
-          const delta = clock.getDelta();
-          if (mixer) mixer.update(delta);
-          renderer.render(scene, camera);
-        });
-
-      } catch (err) {
-        startButton.disabled = false;
-        startButton.innerText = "📷 Tentar Novamente";
-        mensagemErro.innerText = `Erro: ${err.message || err}. Abra este link diretamente no Google Chrome ou Safari.`;
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        document.getElementById('video').srcObject = stream;
+        aviso.innerText = "✅ Câmera funcionando perfeitamente!";
+      } catch (erro) {
+        aviso.innerText = "❌ Bloqueado pelo aparelho: " + erro.name + " - " + erro.message;
       }
-    };
-
-    startButton.addEventListener('click', start);
+    }
   </script>
 
 </body>
