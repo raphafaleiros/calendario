@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Calendário de Natal RA</title>
 
-  <!-- Scripts locais que abriram a câmera e o scanner sem tela branca -->
+  <!-- Usa exclusivamente os seus 2 arquivos locais validados no GitHub -->
   <script src="./aframe.min.js"></script>
   <script src="./mindar-image-aframe.prod.js"></script>
 
@@ -38,13 +38,10 @@
     AFRAME.registerComponent('controlador-calendario', {
       init: function () {
         const aviso = document.getElementById('aviso-topo');
-        const cena = this.el;
-
-        cena.addEventListener("arReady", () => {
-          aviso.innerText = "🎄 Câmera pronta! Aponte para o alvo!";
+        this.el.addEventListener("arReady", () => {
+          aviso.innerText = "🎄 Câmera pronta! Aponte para a imagem!";
         });
-
-        cena.addEventListener("arError", () => {
+        this.el.addEventListener("arError", () => {
           aviso.innerText = "❌ Erro ao ler ./targets.mind ou abrir câmera.";
         });
       }
@@ -57,7 +54,7 @@
           aviso.innerText = "✅ RECONHECIDO!";
         });
         this.el.addEventListener("targetLost", () => {
-          aviso.innerText = "🎄 Aponte a câmera para o alvo!";
+          aviso.innerText = "🎄 Aponte a câmera para a imagem!";
         });
       }
     });
@@ -65,7 +62,7 @@
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 21.0</div>
+  <div id="etiqueta-versao">Versão 23.0</div>
   <div id="aviso-topo">⏳ Ligando câmera...</div>
   <button id="botao-som" onclick="tocarMusica()">🔊 Ativar Música</button>
 
@@ -84,7 +81,7 @@
 
     
       <a-box position="0 0 0.1" scale="0.3 0.3 0.3" color="#ff0000"></a-box>
-      <a-gltf-model id="modelo-dia" rotation="90 0 0" position="0 0 0"></a-gltf-model>
+      <a-gltf-model id="modelo-dia-0" rotation="90 0 0" position="0 0 0"></a-gltf-model>
     
   </a-scene>
 
@@ -95,9 +92,9 @@
     const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
     const escala = (dia === '1') ? '0.015 0.015 0.015' : '0.8 0.8 0.8';
 
-    const modelo = document.getElementById('modelo-dia');
-    modelo.setAttribute('src', arquivoGlb);
-    modelo.setAttribute('scale', escala);
+    const mod0 = document.getElementById('modelo-dia-0');
+    mod0.setAttribute('src', arquivoGlb);
+    mod0.setAttribute('scale', escala);
 
     const musica = new Audio(`./musicanatal${dia}.mp3`);
     function tocarMusica() {
