@@ -5,51 +5,123 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calendário de Natal RA</title>
 
-  <script src="https://aframe.io"></script>
-  <script src="https://jsdelivr.net"></script>
+  <!-- Importação direta e moderna do Three.js e MindAR puro (Sem A-Frame) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com",
+        "three/addons/": "https://unpkg.com",
+        "mindar-image-three": "https://jsdelivr.net"
+      }
+    }
+  </script>
 
   <style>
-    html, body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; }
+    html, body {
+      margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+      font-family: sans-serif; background-color: #000;
+    }
+    #container-ar {
+      width: 100vw; height: 100vh; position: relative; overflow: hidden;
+    }
+    #status {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8); color: #fff; padding: 10px 18px;
+      border-radius: 20px; font-size: 13px; font-weight: bold;
+      z-index: 99999; text-align: center; width: 85%; max-width: 320px;
+    }
     #botao-som {
       position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
       background: #b30000; color: #fff; border: 2px solid #d4af37;
-      padding: 12px 24px; border-radius: 25px; font-family: sans-serif;
-      font-size: 15px; font-weight: bold; cursor: pointer; z-index: 99999;
+      padding: 12px 24px; border-radius: 25px; font-size: 15px; font-weight: bold;
+      cursor: pointer; z-index: 99999;
     }
   </style>
 </head>
 <body>
 
-  <button id="botao-som" onclick="ativarSom()">🔊 Ativar Música</button>
+  <div id="status">⏳ Ligando câmera...</div>
+  <button id="botao-som">🔊 Ativar Música</button>
+  <div id="container-ar"></div>
 
-  <!-- A cena agora está escrita direto no HTML, sem document.write para travar -->
-  <a-scene 
-    mindar-image="imageTargetSrc: ./targets.mind;" 
-    vr-mode-ui="enabled: false" 
-    device-orientation-permission-ui="enabled: false">
-    
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { MindARThree } from 'mindar-image-three';
 
-    
-      <a-gltf-model id="modelo-3d" rotation="90 0 0" position="0 0 0"></a-gltf-model>
-    
-  </a-scene>
-
-  <script>
+    const status = document.getElementById('status');
     const dia = new URLSearchParams(window.location.search).get('dia') || '3';
-    const glb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
-    const esc = (dia === '1') ? '0.008 0.008 0.008' : '0.4 0.4 0.4';
+    const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
+    const escala = (dia === '1') ? 0.008 : 0.4;
 
-    const modelo = document.getElementById('modelo-3d');
-    modelo.setAttribute('src', glb);
-    modelo.setAttribute('scale', esc);
-
+    // Configura o som do dia
     const musica = new Audio(`./musicanatal${dia}.mp3`);
-    function ativarSom() {
+    document.getElementById('botao-som').onclick = () => {
       musica.loop = true;
       musica.play().catch(() => {});
       document.getElementById('botao-som').style.display = 'none';
-    }
+    };
+
+    const iniciarAR = async () => {
+      try {
+        // 1. Inicializa o MindAR apontando para o seu targets.mind
+        const mindarThree = new MindARThree({
+          container: document.querySelector("#container-ar"),
+          imageTargetSrc: "./targets.mind"
+        });
+
+        const { renderer, scene, camera } = mindarThree;
+
+        // Iluminação para o modelo 3D não ficar escuro
+        const luzAmbiente = new THREE.AmbientLight(0xffffff, 1.5);
+        scene.add(luzAmbiente);
+        const luzDirecional = new THREE.DirectionalLight(0xffffff, 2);
+        luzDirecional.position.set(1, 2, 3);
+        scene.add(luzDirecional);
+
+        // Cria âncoras para a Foto 0 (Cheio) e Foto 1 (Vazio)
+        const ancora0 = mindarThree.addAnchor(0);
+        const ancora1 = mindarThree.addAnchor(1);
+
+        // 2. Liga a câmera imediatamente
+        await mindarThree.start();
+        status.innerText = `🎄 Dia ${dia}: Aponte para o Calendário!`;
+
+        // 3. Carrega o modelo 3D do dia em segundo plano
+        const loader = new GLTFLoader();
+        let mixer0 = null;
+        let mixer1 = null;
+
+        loader.load(arquivoGlb, (gltf) => {
+          const modelo0 = gltf.scene;
+          modelo0.scale.set(escala, escala, escala);
+          modelo0.rotation.x = Math.PI / 2; // Deixa em pé sobre o calendário
+          ancora0.group.add(modelo0);
+
+          // Clona para o segundo alvo (calendário vazio)
+          const modelo1 = modelo0.clone();
+          ancora1.group.add(modelo1);
+
+          // Ativa animação se o modelo tiver (ex: Dia 3)
+          if (gltf.animations && gltf.animations.length > 0) {
+            mixer0 = new THREE.AnimationMixer(modelo0);
+            mixer0.clipAction(gltf.animations[0]).play();
+          }
+        });
+
+        const clock = new THREE.Clock();
+        renderer.setAnimationLoop(() => {
+          const delta = clock.getDelta();
+          if (mixer0) mixer0.update(delta);
+          renderer.render(scene, camera);
+        });
+
+      } catch (erro) {
+        status.innerText = "❌ Erro ao abrir câmera: " + erro.message;
+      }
+    };
+
+    iniciarAR();
   </script>
 
 </body>
