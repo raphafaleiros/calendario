@@ -46,7 +46,7 @@
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 10.0</div>
+  <div id="etiqueta-versao">Versão 12.0</div>
 
   <div id="tela-inicio">
     <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
@@ -55,31 +55,27 @@
     <p id="log-erro" style="color: #ff6b6b; font-size: 13px; margin-top: 20px; max-width: 320px;"></p>
   </div>
 
-  <div id="aviso-topo">🎄 Aponte a câmera para o Calendário!</div>
+  <div id="aviso-topo">🎄 Aponte a câmera para a imagem!</div>
   <button id="botao-som" onclick="tocarMusica()">🔊 Ativar Música</button>
 
+  <!-- Caminho limpo ./targets.mind sem parâmetros na extensão -->
   <a-scene 
     id="cena-ar"
     mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiScanning: yes; uiLoading: no;" 
-    background="transparent: true"
     color-space="sRGB" 
-    renderer="colorManagement: true; alpha: true;" 
+    renderer="colorManagement: true; physicallyCorrectLights: true;" 
     vr-mode-ui="enabled: false" 
     device-orientation-permission-ui="enabled: false">
     
+    <!-- Iluminação obrigatória para modelos .glb aparecerem visíveis -->
+    <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
+    <a-light type="directional" color="#ffffff" intensity="1.5" position="1 2 3"></a-light>
+
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- ALVO 0 (Calendário Cheio) -->
     
-      <!-- Bolinha vermelha de guia para confirmar que a câmera reconheceu o alvo -->
-      <a-sphere position="0 0 0.1" radius="0.08" color="#ff0000"></a-sphere>
+      <a-box position="0 0 0.1" scale="0.2 0.2 0.2" color="#ff0000"></a-box>
       <a-gltf-model id="modelo-cheio" rotation="90 0 0" position="0 0 0"></a-gltf-model>
-    
-
-    <!-- ALVO 1 (Calendário Vazio) -->
-    
-      <a-sphere position="0 0 0.1" radius="0.08" color="#ff0000"></a-sphere>
-      <a-gltf-model id="modelo-vazio" rotation="90 0 0" position="0 0 0"></a-gltf-model>
     
   </a-scene>
 
@@ -94,32 +90,21 @@
     document.getElementById('subtitulo-dia').innerText = `Surpresa do Dia ${dia}`;
 
     const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
-    // Aumentei a escala padrão de 0.4 para 0.8 para ficar bem visível
     const escala = (dia === '1') ? '0.015 0.015 0.015' : '0.8 0.8 0.8';
 
-    const modCheio = document.getElementById('modelo-cheio');
-    const modVazio = document.getElementById('modelo-vazio');
-    modCheio.setAttribute('src', arquivoGlb);
-    modCheio.setAttribute('scale', escala);
-    modVazio.setAttribute('src', arquivoGlb);
-    modVazio.setAttribute('scale', escala);
+    // Configura o modelo e os eventos somente após a cena A-Frame estar pronta
+    cena.addEventListener('loaded', () => {
+      const modCheio = document.getElementById('modelo-cheio');
+      modCheio.setAttribute('src', arquivoGlb);
+      modCheio.setAttribute('scale', escala);
 
-    // Avisa na barra preta quando o alvo for reconhecido ou perdido
-    const alvo0 = document.getElementById('alvo-0');
-    const alvo1 = document.getElementById('alvo-1');
-
-    alvo0.addEventListener("targetFound", () => {
-      avisoTopo.innerText = "✅ Calendário reconhecido! (Alvo 1)";
-    });
-    alvo0.addEventListener("targetLost", () => {
-      avisoTopo.innerText = "🎄 Aponte a câmera para o Calendário!";
-    });
-
-    alvo1.addEventListener("targetFound", () => {
-      avisoTopo.innerText = "✅ Calendário reconhecido! (Alvo 2)";
-    });
-    alvo1.addEventListener("targetLost", () => {
-      avisoTopo.innerText = "🎄 Aponte a câmera para o Calendário!";
+      const alvo0 = document.getElementById('alvo-0');
+      alvo0.addEventListener("targetFound", () => {
+        avisoTopo.innerText = "✅ Imagem reconhecida!";
+      });
+      alvo0.addEventListener("targetLost", () => {
+        avisoTopo.innerText = "🎄 Aponte a câmera para a imagem!";
+      });
     });
 
     const musica = new Audio(`./musicanatal${dia}.mp3`);
@@ -136,6 +121,9 @@
 
       try {
         const arSystem = cena.systems['mindar-image-system'];
+        if (!arSystem) {
+          throw new Error("Aguarde 2 segundos e toque novamente.");
+        }
 
         cena.addEventListener("arReady", () => {
           document.getElementById('tela-inicio').style.display = 'none';
@@ -146,7 +134,7 @@
         cena.addEventListener("arError", () => {
           btn.disabled = false;
           btn.innerText = "📷 Tentar Novamente";
-          erroTxt.innerText = "Erro ao abrir câmera.";
+          erroTxt.innerText = "Erro ao abrir câmera ou ler targets.mind.";
         });
 
         arSystem.start();
