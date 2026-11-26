@@ -69,19 +69,19 @@
     AFRAME.registerComponent('animador-glb', {
       init: function () {
         this.mixer = null;
-        this.el.addEventListener('model-loaded', (e) => {
+        this.el.addEventListener('model-loaded', function (e) {
           const model = e.detail.model;
           const clips = model && model.animations ? model.animations : [];
           if (clips.length > 0 && window.THREE && THREE.AnimationMixer) {
             this.mixer = new THREE.AnimationMixer(model);
-            clips.forEach((clip) => {
+            clips.forEach(function (clip) {
               const action = this.mixer.clipAction(clip);
               action.reset();
               action.setLoop(THREE.LoopRepeat, Infinity);
               action.play();
-            });
+            }.bind(this));
           }
-        });
+        }.bind(this));
       },
       tick: function (time, delta) {
         if (this.mixer && delta) {
@@ -95,12 +95,73 @@
         const aviso = document.getElementById('aviso-topo');
         const cena = this.el;
 
-        cena.addEventListener("arReady", () => {
+        cena.addEventListener("arReady", function () {
           if (!modeloTravadoNaTela) {
             aviso.innerText = "🎄 Câmera pronta! Aponte para o alvo!";
             document.getElementById('dica-gesto').style.display = 'block';
           }
         });
 
-        cena.addEventListener("arError", (e) => {
+        cena.addEventListener("arError", function (e) {
           const msg = (e && e.detail && (e.detail.error?.message || e.detail.error)) || "VIDEO_FAIL ao abrir câmera";
+          aviso.innerText = "❌ " + msg;
+          document.getElementById('tela-inicio').style.display = 'flex';
+        });
+      }
+    });
+
+    AFRAME.registerComponent('detector-alvo', {
+      init: function () {
+        const aviso = document.getElementById('aviso-topo');
+        const cena = document.getElementById('cena-ar');
+        const modelo = document.getElementById('modelo-dia');
+        const palcoLivre = document.getElementById('palco-livre');
+        const alvoEl = this.el;
+        const botaoRemirar = document.getElementById('botao-remirar');
+
+        alvoEl.addEventListener("targetFound", function () {
+          if (modeloTravadoNaTela) return;
+          modeloTravadoNaTela = true;
+          aviso.innerText = "🔒 Travado na tela! Gire o modelo com o dedo.";
+
+          if (modelo && palcoLivre && modelo.parentNode !== palcoLivre) {
+            palcoLivre.appendChild(modelo);
+            modelo.setAttribute('position', '0 -0.15 -1.4');
+          }
+
+          alvoEl.setAttribute('mindar-image-target', "targetIndex: " + targetIndex + "; enabled: false");
+          botaoRemirar.style.display = 'block';
+        });
+
+        alvoEl.addEventListener("targetLost", function () {
+          if (!modeloTravadoNaTela) {
+            aviso.innerText = "🎄 Aponte a câmera para o alvo!";
+          }
+        });
+      }
+    });
+
+    AFRAME.registerComponent('controle-toque-modelo', {
+      schema: {
+        escalaBase: { type: 'number', default: 0.35 },
+        rotacaoInicial: { type: 'vec3', default: { x: 0, y: 0, z: 0 } }
+      },
+      init: function () {
+        this.arrastando = false;
+        this.ultimoX = 0;
+        this.ultimoY = 0;
+        this.distanciaInicialPinca = 0;
+        this.fatorEscalaAtual = 1;
+        this.fatorEscalaInicioPinca = 1;
+
+        this.rotX = this.data.rotacaoInicial.x;
+        this.rotY = this.data.rotacaoInicial.y;
+        this.rotZ = this.data.rotacaoInicial.z;
+        this.aplicarTransformacao();
+
+        this.onTouchStart = this.onTouchStart.bind(this);
+        this.onTouchMove = this.onTouchMove.bind(this);
+        this.onTouchEnd = this.onTouchEnd.bind(this);
+
+        window.addEventListener('touchstart', this.onTouchStart, { passive: false });
+        window.addEventListener('touchmove', this.on
