@@ -2,33 +2,22 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Calendário de Natal RA</title>
+
+  <!-- Uma única CDN estável (jsDelivr) para funcionar em qualquer Android e iPhone -->
+  <script src="https://jsdelivr.net"></script>
+  <script src="https://jsdelivr.net"></script>
 
   <style>
     html, body {
-      margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
-      font-family: sans-serif;
-      background: transparent !important;
-      color: #fff;
-    }
-    #container-ar {
-      width: 100vw; height: 100vh; position: fixed; top: 0; left: 0;
-      overflow: hidden; background: transparent !important;
-    }
-    #container-ar video {
-      position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover !important;
-      z-index: -1 !important;
+      margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     #tela-inicio {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: #121212; z-index: 99999; text-align: center; padding: 20px; box-sizing: border-box;
+      background: #121212; color: #fff; z-index: 99999; text-align: center; padding: 20px; box-sizing: border-box;
     }
     #btn-iniciar {
       background: #2e7d32; color: #fff; border: 3px solid #d4af37;
@@ -57,46 +46,72 @@
       z-index: 999999; pointer-events: none;
     }
   </style>
-
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://unpkg.com",
-      "three/addons/": "https://unpkg.com",
-      "mindar-image-three": "https://jsdelivr.net"
-    }
-  }
-  </script>
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 5.3</div>
+  <div id="etiqueta-versao">Versão 6.0</div>
 
   <div id="tela-inicio">
     <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
-    <p id="subtitulo-dia" style="color: #ccc; margin-bottom: 25px;">Carregando...</p>
-    <button id="btn-iniciar" disabled>⏳ Aguarde...</button>
+    <p id="subtitulo-dia" style="color: #ccc; margin-bottom: 25px;">Preparando câmera...</p>
+    <button id="btn-iniciar" disabled>⏳ Carregando...</button>
     <p id="log-erro" style="color: #ff6b6b; font-size: 13px; margin-top: 20px; max-width: 320px;"></p>
   </div>
 
   <div id="aviso-topo">🎄 Aponte a câmera para o Calendário!</div>
   <button id="botao-som">🔊 Ativar Música</button>
-  <div id="container-ar"></div>
 
-  <script type="module">
-    import * as THREE from 'three';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-    import { MindARThree } from 'mindar-image-three';
+  <a-scene 
+    id="cena-ar"
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiScanning: yes; uiLoading: no;" 
+    color-space="sRGB" 
+    renderer="colorManagement: true" 
+    vr-mode-ui="enabled: false" 
+    device-orientation-permission-ui="enabled: false">
+    
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    const btn = document.getElementById('btn-iniciar');
-    const erroTxt = document.getElementById('log-erro');
-    const subtitulo = document.getElementById('subtitulo-dia');
+    <!-- Alvo 0: Calendário Cheio -->
+    
+      <a-gltf-model id="modelo-cheio" rotation="90 0 0" position="0 0 0"></a-gltf-model>
+    
+
+    <!-- Alvo 1: Calendário Vazio -->
+    
+      <a-gltf-model id="modelo-vazio" rotation="90 0 0" position="0 0 0"></a-gltf-model>
+    
+  </a-scene>
+
+  <script>
     const parametros = new URLSearchParams(window.location.search);
     const dia = parametros.get('dia') || '3';
+    const btn = document.getElementById('btn-iniciar');
+    const erroTxt = document.getElementById('log-erro');
+    const cena = document.querySelector('a-scene');
 
-    subtitulo.innerText = `Surpresa do Dia ${dia}`;
-    btn.disabled = false;
-    btn.innerText = "📷 Iniciar Câmera RA";
+    document.getElementById('subtitulo-dia').innerText = `Surpresa do Dia ${dia}`;
+
+    const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
+    const escala = (dia === '1') ? '0.008 0.008 0.008' : '0.4 0.4 0.4';
+
+    const modCheio = document.getElementById('modelo-cheio');
+    const modVazio = document.getElementById('modelo-vazio');
+    modCheio.setAttribute('src', arquivoGlb);
+    modCheio.setAttribute('scale', escala);
+    modVazio.setAttribute('src', arquivoGlb);
+    modVazio.setAttribute('scale', escala);
+
+    // Libera o botão assim que a cena terminar de inicializar (funciona em Android e iOS)
+    function liberarBotao() {
+      btn.disabled = false;
+      btn.innerText = "📷 Iniciar Câmera RA";
+    }
+
+    if (cena.hasLoaded) {
+      liberarBotao();
+    } else {
+      cena.addEventListener('loaded', liberarBotao);
+    }
 
     const musica = new Audio(`./musicanatal${dia}.mp3`);
     document.getElementById('botao-som').addEventListener('click', () => {
@@ -105,68 +120,31 @@
       document.getElementById('botao-som').style.display = 'none';
     });
 
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', () => {
       btn.disabled = true;
       btn.innerText = "⏳ Abrindo câmera...";
       erroTxt.innerText = "";
 
       try {
-        const mindarThree = new MindARThree({
-          container: document.querySelector("#container-ar"),
-          imageTargetSrc: "./targets.mind"
+        const arSystem = cena.systems['mindar-image-system'];
+        
+        cena.addEventListener("arReady", () => {
+          document.getElementById('tela-inicio').style.display = 'none';
+          document.getElementById('aviso-topo').style.display = 'block';
+          document.getElementById('botao-som').style.display = 'block';
         });
 
-        const { renderer, scene, camera } = mindarThree;
-
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-        dirLight.position.set(1, 2, 3);
-        scene.add(dirLight);
-
-        const anchor0 = mindarThree.addAnchor(0);
-        const anchor1 = mindarThree.addAnchor(1);
-
-        await mindarThree.start();
-
-        document.getElementById('tela-inicio').style.display = 'none';
-        document.getElementById('aviso-topo').style.display = 'block';
-        document.getElementById('botao-som').style.display = 'block';
-
-        const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
-        const escala = (dia === '1') ? 0.008 : 0.4;
-
-        const loader = new GLTFLoader();
-        let mixer = null;
-
-        loader.load(arquivoGlb, (gltf) => {
-          const modelo0 = gltf.scene;
-          modelo0.scale.set(escala, escala, escala);
-          modelo0.rotation.x = Math.PI / 2;
-          anchor0.group.add(modelo0);
-
-          const modelo1 = modelo0.clone();
-          anchor1.group.add(modelo1);
-
-          if (gltf.animations && gltf.animations.length > 0) {
-            mixer = new THREE.AnimationMixer(modelo0);
-            mixer.clipAction(gltf.animations[0]).play();
-          }
-        }, undefined, () => {
-          document.getElementById('aviso-topo').innerText = `⚠️ Erro ao baixar ${arquivoGlb}`;
+        cena.addEventListener("arError", () => {
+          btn.disabled = false;
+          btn.innerText = "📷 Tentar Novamente";
+          erroTxt.innerText = "Erro ao abrir câmera. Verifique se você permitiu o acesso no navegador.";
         });
 
-        const clock = new THREE.Clock();
-        renderer.setAnimationLoop(() => {
-          const delta = clock.getDelta();
-          if (mixer) mixer.update(delta);
-          renderer.render(scene, camera);
-        });
-
+        arSystem.start();
       } catch (e) {
         btn.disabled = false;
         btn.innerText = "📷 Tentar Novamente";
-        erroTxt.innerText = "Erro: " + (e.message || e);
+        erroTxt.innerText = "Erro: " + e.message;
       }
     });
   </script>
