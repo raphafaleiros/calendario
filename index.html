@@ -12,12 +12,20 @@
     html, body {
       margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
       font-family: sans-serif;
+      touch-action: none;
     }
     #aviso-topo {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.85); color: #fff; padding: 10px 18px;
       border-radius: 20px; font-size: 13px; font-weight: bold;
       z-index: 99998; text-align: center; width: 85%; max-width: 340px;
+      pointer-events: none;
+    }
+    #dica-gesto {
+      position: fixed; bottom: 82px; left: 50%; transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.65); color: #fff; padding: 6px 14px;
+      border-radius: 14px; font-size: 12px; z-index: 99998;
+      pointer-events: none; white-space: nowrap;
     }
     #botao-som {
       position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
@@ -39,13 +47,23 @@
         const aviso = document.getElementById('aviso-topo');
         const cena = this.el;
 
+        fetch('./targets.mind')
+          .then((res) => {
+            if (!res.ok) {
+              aviso.innerText = `❌ ./targets.mind HTTP ${res.status}`;
+            }
+          })
+          .catch((err) => {
+            aviso.innerText = `❌ Falha fetch ./targets.mind: ${err.message}`;
+          });
+
         cena.addEventListener("arReady", () => {
           aviso.innerText = "🎄 Câmera pronta! Aponte para o alvo!";
         });
 
-        cena.addEventListener("arError", (err) => {
-          console.error("Erro MindAR:", err);
-          aviso.innerText = "❌ Erro ao ler ./targets.mind ou abrir câmera.";
+        cena.addEventListener("arError", (e) => {
+          const msg = (e && e.detail && (e.detail.error?.message || e.detail.error)) || e?.message || "Erro ao ler ./targets.mind ou abrir câmera.";
+          aviso.innerText = `❌ ${msg}`;
         });
       }
     });
@@ -61,21 +79,119 @@
         });
       }
     });
+
+    // Componente para girar com 1 dedo e dar zoom com pinça (2 dedos) no modelo
+    AFRAME.registerComponent('controle-toque-modelo', {
+      schema: {
+        escalaBase: { type: 'number', default: 0.8 },
+        rotacaoInicial: { type: 'vec3', default: { x: 90, y: 0, z: 0 } }
+      },
+      init: function () {
+        this.arrastando = false;
+        this.ultimoX = 0;
+        this.ultimoY = 0;
+        this.distanciaInicialPinça = 0;
+        this.fatorEscalaAtual = 1;
+        this.fatorEscalaInicioPinça = 1;
+
+        this.rotX = this.data.rotacaoInicial.x;
+        this.rotY = this.data.rotacaoInicial.y;
+        this.rotZ = this.data.rotacaoInicial.z;
+
+        this.aplicarTransformacao();
+
+        this.onTouchStart = this.onTouchStart.bind(this);
+        this.onTouchMove = this.onTouchMove.bind(this);
+        this.onTouchEnd = this.onTouchEnd.bind(this);
+
+        window.addEventListener('touchstart', this.onTouchStart, { passive: false });
+        window.addEventListener('touchmove', this.onTouchMove, { passive: false });
+        window.addEventListener('touchend', this.onTouchEnd, { passive: false });
+      },
+      update: function () {
+        this.rotX = this.data.rotacaoInicial.x;
+        this.rotY = this.data.rotacaoInicial.y;
+        this.rotZ = this.data.rotacaoInicial.z;
+        this.fatorEscalaAtual = 1;
+        this.aplicarTransformacao();
+      },
+      distanciaDoisToques: function (t1, t2) {
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
+        return Math.hypot(dx, dy);
+      },
+      onTouchStart: function (e) {
+        if (e.touches.length === 1) {
+          this.arrastando = true;
+          this.ultimoX = e.touches[0].clientX;
+          this.ultimoY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          this.arrastando = false;
+          this.distanciaInicialPinça = this.distanciaDoisToques(e.touches[0], e.touches[1]);
+          this.fatorEscalaInicioPinça = this.fatorEscalaAtual;
+        }
+      },
+      onTouchMove: function (e) {
+        if (e.touches.length === 1 && this.arrastando) {
+          e.preventDefault();
+          const x = e.touches[0].clientX;
+          const y = e.touches[0].clientY;
+          const dx = x - this.ultimoX;
+          const dy = y - this.ultimoY;
+
+          this.ultimoX = x;
+          this.ultimoY = y;
+
+          // Gira o modelo horizontalmente e ajusta inclinação leve
+          this.rotY += dx * 0.6;
+          this.rotX = Math.max(-45, Math.min(135, this.rotX + dy * 0.4));
+          this.aplicarTransformacao();
+        } else if (e.touches.length === 2 && this.distanciaInicialPinça > 0) {
+          e.preventDefault();
+          const distAtual = this.distanciaDoisToques(e.touches[0], e.touches[1]);
+          const razao = distAtual / this.distanciaInicialPinça;
+          this.fatorEscalaAtual = Math.max(0.35, Math.min(3.0, this.fatorEscalaInicioPinça * razao));
+          this.aplicarTransformacao();
+        }
+      },
+      onTouchEnd: function (e) {
+        if (e.touches.length === 0) {
+          this.arrastando = false;
+          this.distanciaInicialPinça = 0;
+        } else if (e.touches.length === 1) {
+          this.distanciaInicialPinça = 0;
+          this.arrastando = true;
+          this.ultimoX = e.touches[0].clientX;
+          this.ultimoY = e.touches[0].clientY;
+        }
+      },
+      aplicarTransformacao: function () {
+        this.el.setAttribute('rotation', `${this.rotX} ${this.rotY} ${this.rotZ}`);
+        const s = this.data.escalaBase * this.fatorEscalaAtual;
+        this.el.setAttribute('scale', `${s} ${s} ${s}`);
+      },
+      remove: function () {
+        window.removeEventListener('touchstart', this.onTouchStart);
+        window.removeEventListener('touchmove', this.onTouchMove);
+        window.removeEventListener('touchend', this.onTouchEnd);
+      }
+    });
   </script>
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 22.0 (MindAR)</div>
+  <div id="etiqueta-versao">Versão 23.0 (Girar + Zoom)</div>
   <div id="aviso-topo">⏳ Ligando câmera...</div>
+  <div id="dica-gesto">👆 1 dedo: girar • 🤏 2 dedos: zoom</div>
   <button id="botao-som" onclick="tocarMusica()">🔊 Ativar Música</button>
 
-<a-scene
-  controlador-calendario
-  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: yes; uiLoading: no; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 10;"
-  color-space="sRGB"
-  renderer="colorManagement: true"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false">
+  <a-scene
+    controlador-calendario
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: yes; uiLoading: no; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 12;"
+    color-space="sRGB"
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
 
     <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
     <a-light type="directional" color="#ffffff" intensity="1.5" position="1 2 3"></a-light>
@@ -93,7 +209,6 @@
     const diaNum = Math.min(24, Math.max(1, parseInt(parametros.get('dia') || '1', 10) || 1));
     const dia = String(diaNum);
 
-    // Se ?alvo= não for informado, usa 0 para alvos únicos ou (diaNum - 1) se houver 24 alvos no .mind
     const alvoParam = parametros.get('alvo');
     const targetIndex = (alvoParam !== null && !Number.isNaN(Number(alvoParam)))
       ? Math.max(0, parseInt(alvoParam, 10))
@@ -103,7 +218,7 @@
     alvoEl.setAttribute('mindar-image-target', `targetIndex: ${targetIndex}`);
 
     const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
-    const escala = (dia === '1') ? '0.015 0.015 0.015' : '0.8 0.8 0.8';
+    const escalaBase = (dia === '1') ? 0.015 : 0.8;
 
     const modelo = document.getElementById('modelo-dia');
     const cuboTeste = document.getElementById('cubo-teste');
@@ -114,7 +229,8 @@
     });
 
     modelo.setAttribute('src', arquivoGlb);
-    modelo.setAttribute('scale', escala);
+    modelo.setAttribute('scale', `${escalaBase} ${escalaBase} ${escalaBase}`);
+    modelo.setAttribute('controle-toque-modelo', `escalaBase: ${escalaBase}; rotacaoInicial: 90 0 0`);
 
     const musica = new Audio(`./musicanatal${dia}.mp3`);
     musica.addEventListener('error', () => {
