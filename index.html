@@ -46,12 +46,12 @@
     }
   </style>
 
-  <!-- Importmap apontando para servidores rápidos e estáveis -->
+  <!-- Importmap exato exigido pelo MindAR 1.2.5 (usando unpkg para todos os caminhos baterem) -->
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cloudflare.com",
-        "three/addons/": "https://jsdelivr.net",
+        "three": "https://unpkg.com",
+        "three/addons/": "https://unpkg.com",
         "mindar-image-three": "https://jsdelivr.net"
       }
     }
@@ -59,7 +59,7 @@
 </head>
 <body>
 
-  <div id="etiqueta-versao">Versão 4.0</div>
+  <div id="etiqueta-versao">Versão 4.1</div>
 
   <div id="tela-inicio">
     <h2 style="color: #d4af37; margin-bottom: 10px;">🎄 Calendário de Natal RA</h2>
@@ -72,6 +72,16 @@
   <button id="botao-som">🔊 Ativar Música</button>
   <div id="container-ar"></div>
 
+  <!-- Captura se o celular falhar ao baixar o módulo da internet -->
+  <script>
+    setTimeout(() => {
+      const btn = document.getElementById('btn-iniciar');
+      if (btn && btn.disabled) {
+        document.getElementById('log-erro').innerText = "⚠️ A internet demorou a baixar o motor 3D. Verifique sua conexão e recarregue a página.";
+      }
+    }, 8000);
+  </script>
+
   <script type="module">
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -83,8 +93,8 @@
     const parametros = new URLSearchParams(window.location.search);
     const dia = parametros.get('dia') || '3';
 
-    // Assim que o módulo terminar de carregar, destrava o botão verde
     subtitulo.innerText = `Surpresa do Dia ${dia}`;
+    erroTxt.innerText = "";
     btn.disabled = false;
     btn.innerText = "📷 Iniciar Câmera RA";
 
@@ -116,14 +126,12 @@
         const ancora0 = mindarThree.addAnchor(0);
         const ancora1 = mindarThree.addAnchor(1);
 
-        // Liga a câmera primeiro (em menos de 2 segundos)
         await mindarThree.start();
 
         document.getElementById('tela-inicio').style.display = 'none';
         document.getElementById('aviso-topo').style.display = 'block';
         document.getElementById('botao-som').style.display = 'block';
 
-        // Baixa o modelo 3D em segundo plano
         const arquivoGlb = (dia === '1') ? './animated_snowglobe.glb' : `./${dia}.glb`;
         const escala = (dia === '1') ? 0.008 : 0.4;
 
